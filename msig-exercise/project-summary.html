@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Multi-Agentic AI - MSIG Exercise Summary</title>
+<style>
+body { font-family: Calibri, Arial, sans-serif; margin: 40px; line-height: 1.6; color: #333; }
+h1 { color: #1a1a2e; border-bottom: 3px solid #667eea; padding-bottom: 10px; }
+h2 { color: #667eea; margin-top: 30px; }
+h3 { color: #764ba2; }
+.header { text-align: center; margin-bottom: 40px; }
+.header h1 { font-size: 28px; }
+.header p { color: #666; font-size: 14px; }
+.section { margin-bottom: 30px; }
+table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+th, td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; }
+th { background: #667eea; color: white; }
+tr:nth-child(even) { background: #f8f9fa; }
+.code-block { background: #1a1a2e; color: #eee; padding: 15px; border-radius: 8px; font-family: Consolas, monospace; font-size: 13px; overflow-x: auto; }
+.highlight { background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 15px 0; }
+.screenshot-placeholder { border: 2px dashed #ccc; padding: 60px 20px; text-align: center; color: #999; margin: 15px 0; background: #fafafa; }
+.badge { display: inline-block; background: #667eea; color: white; padding: 3px 10px; border-radius: 12px; font-size: 12px; margin-right: 5px; }
+.flow-diagram { text-align: center; font-size: 16px; padding: 20px; background: #f0f0ff; border-radius: 8px; margin: 15px 0; }
+.repo-link { color: #667eea; }
+</style>
+</head>
+<body>
+
+<div class="header">
+<h1>Multi-Agentic AI System</h1>
+<p>MSIG Exercise - Project Summary Document</p>
+<p><strong>Repository:</strong> <a class="repo-link" href="https://github.com/rengan76/multi-agentic-ai/tree/main/msig-exercise">github.com/rengan76/multi-agentic-ai</a></p>
+<p><strong>Date:</strong> June 3, 2026</p>
+</div>
+
+<div class="section">
+<h2>1. Project Overview</h2>
+<p>We built a <strong>multi-agent AI workflow system</strong> that demonstrates how AI agents can collaborate following a structured rulebook to automatically generate full-stack applications. The system showcases the concept behind MSIG's "Nebula" framework — where AI agents take on specific roles (Product Manager, Architect, Developer, QA) and follow a gated pipeline to produce software.</p>
+
+<div class="highlight">
+<strong>Key Concept:</strong> Instead of manually guiding AI through the same workflow every session, we define the workflow ONCE as code. Agents follow rules, produce artifacts, and pass quality gates before the next step begins.
+</div>
+</div>
+
+<div class="section">
+<h2>2. What We Built</h2>
+
+<h3>2.1 Agent Workflow Engine (Backend)</h3>
+<p>A Node.js/Express system with 4 AI agents working in sequence:</p>
+
+<div class="flow-diagram">
+<strong>Product Manager</strong> → 🚪 Gate → <strong>Architect</strong> → 🚪 Gate → <strong>Developer</strong> → 🚪 Gate → <strong>QA</strong> → ✅ Feature Complete
+</div>
+
+<table>
+<tr><th>Agent Role</th><th>Responsibility</th><th>Produces</th><th>Cannot Do</th></tr>
+<tr><td>Product Manager</td><td>Define WHAT to build</td><td>requirements.json, stories.json</td><td>Write code, pick technology</td></tr>
+<tr><td>Architect</td><td>Design HOW to build it</td><td>api-design.json, data-model.json</td><td>Change requirements, write code</td></tr>
+<tr><td>Developer</td><td>Write the actual code</td><td>routes, controllers, models</td><td>Change requirements/architecture</td></tr>
+<tr><td>QA</td><td>Test everything works</td><td>test-results.json</td><td>Change code or requirements</td></tr>
+</table>
+
+<h3>2.2 The Rulebook</h3>
+<p>A configuration file that defines:</p>
+<ul>
+<li><strong>Roles</strong> — What each agent can and cannot do</li>
+<li><strong>Workflow</strong> — The ordered steps (1→2→3→4)</li>
+<li><strong>Gates</strong> — Quality checkpoints between each step (validation functions)</li>
+</ul>
+
+<h3>2.3 Generated Application</h3>
+<p>When the agent pipeline runs, it automatically generates:</p>
+<ul>
+<li><code>tasks-routes.js</code> — A fully functional Express REST API (GET, POST, DELETE)</li>
+<li><code>server.js</code> — Express server with CORS, API endpoints for rulebook/build-summary</li>
+<li><code>build-summary.json</code> — Metadata showing what was built and why</li>
+</ul>
+
+<h3>2.4 React Frontend (Viewer UI)</h3>
+<p>A React + Vite frontend application with 3 views:</p>
+
+<table>
+<tr><th>Tab</th><th>Purpose</th></tr>
+<tr><td>Rulebook & Workflow</td><td>Visual pipeline diagram, agent roles, gates</td></tr>
+<tr><td>Tasks Manager (Live)</td><td>Live CRUD interface against the generated Express API</td></tr>
+<tr><td>Build Summary</td><td>Shows user stories, endpoints, generated files, test results</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h2>3. Architecture</h2>
+<div class="code-block">
+msig-exercise/
+├── mini-app/
+│   ├── rulebook.js          ← Agent roles, workflow steps, gate definitions
+│   ├── agents.js            ← Agent implementations (PM, Architect, Dev, QA)
+│   ├── run.js               ← Workflow runner (executes pipeline)
+│   ├── frontend/            ← React + Vite UI
+│   │   ├── src/
+│   │   │   ├── App.jsx
+│   │   │   ├── components/
+│   │   │   │   ├── RulebookView.jsx
+│   │   │   │   ├── TasksManager.jsx
+│   │   │   │   └── BuildSummary.jsx
+│   │   │   └── index.css
+│   │   └── package.json
+│   └── generated-app/       ← Output from agent pipeline
+│       ├── server.js
+│       ├── tasks-routes.js
+│       └── build-summary.json
+├── exercise1-explanation.txt
+├── exercise2-instructions.txt
+├── interview-prep.js
+└── interview-qa.js
+</div>
+</div>
+
+<div class="section">
+<h2>4. Screenshots</h2>
+<p><em>(Insert screenshots from the running application below)</em></p>
+
+<h3>4.1 Rulebook & Workflow View</h3>
+<div class="screenshot-placeholder">
+📷 INSERT SCREENSHOT: Rulebook tab showing pipeline diagram and agent role cards<br>
+<small>(Run the app: node server.js on port 4000, then npx vite from frontend/ on port 3000)</small>
+</div>
+
+<h3>4.2 Tasks Manager (Live CRUD)</h3>
+<div class="screenshot-placeholder">
+📷 INSERT SCREENSHOT: Tasks Manager tab showing task list with Add/Delete functionality
+</div>
+
+<h3>4.3 Build Summary</h3>
+<div class="screenshot-placeholder">
+📷 INSERT SCREENSHOT: Build Summary tab showing stories, endpoints, and test results
+</div>
+</div>
+
+<div class="section">
+<h2>5. How to Run</h2>
+<div class="code-block">
+# 1. Clone the repo
+git clone https://github.com/rengan76/multi-agentic-ai.git
+cd multi-agentic-ai/msig-exercise/mini-app
+
+# 2. Run the agent pipeline (generates the app)
+node run.js
+
+# 3. Start the backend
+cd generated-app
+node server.js        # → http://localhost:4000
+
+# 4. Start the frontend (new terminal)
+cd ../frontend
+npm install
+npx vite              # → http://localhost:3000
+</div>
+</div>
+
+<div class="section">
+<h2>6. Key Takeaways</h2>
+<ul>
+<li><strong>Why agents?</strong> — Eliminates repetitive AI sessions; workflow is codified once and reused</li>
+<li><strong>Why gates?</strong> — Prevents coordination failures (e.g., code that compiles but doesn't match the spec)</li>
+<li><strong>Why roles/boundaries?</strong> — Each agent can ONLY do its job, preventing scope creep and ensuring separation of concerns</li>
+<li><strong>Real-world application:</strong> Based on MSIG's Nebula framework for enterprise software delivery</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>7. Technologies Used</h2>
+<span class="badge">Node.js</span>
+<span class="badge">Express</span>
+<span class="badge">React 18</span>
+<span class="badge">Vite</span>
+<span class="badge">JavaScript</span>
+</div>
+
+</body>
+</html>
