@@ -1,0 +1,316 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #1a1a2e;
+  color: #eee;
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.app-header h1 {
+  font-size: 2rem;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.5rem;
+}
+
+.app-header p {
+  color: #888;
+  font-size: 0.95rem;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid #2a2a4a;
+  padding-bottom: 0.5rem;
+}
+
+.tab-btn {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  background: transparent;
+  color: #888;
+  font-size: 0.95rem;
+  cursor: pointer;
+  border-radius: 6px 6px 0 0;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  color: #ccc;
+  background: #2a2a4a;
+}
+
+.tab-btn.active {
+  color: #fff;
+  background: #667eea;
+}
+
+/* Cards */
+.card {
+  background: #16213e;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid #2a2a4a;
+}
+
+.card h2 {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  color: #667eea;
+}
+
+.card h3 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  color: #aaa;
+}
+
+/* Workflow Pipeline */
+.pipeline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 1rem 0;
+}
+
+.pipeline-step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.step-box {
+  background: #2a2a4a;
+  border: 2px solid #667eea;
+  border-radius: 8px;
+  padding: 0.8rem 1.2rem;
+  text-align: center;
+  min-width: 120px;
+}
+
+.step-box .step-num {
+  font-size: 0.7rem;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.step-box .step-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.gate-arrow {
+  color: #4caf50;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+/* Roles Grid */
+.roles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.role-card {
+  background: #1a1a3e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.role-card h4 {
+  color: #764ba2;
+  margin-bottom: 0.5rem;
+  text-transform: capitalize;
+}
+
+.role-card .does {
+  color: #4caf50;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.role-card .produces {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.role-card .produces span {
+  background: #2a2a4a;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  margin-right: 0.3rem;
+  display: inline-block;
+  margin-bottom: 0.2rem;
+}
+
+.role-card .cannot {
+  font-size: 0.75rem;
+  color: #e57373;
+  margin-top: 0.4rem;
+}
+
+/* Tasks Manager */
+.task-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.task-form input,
+.task-form select {
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: #1a1a3e;
+  color: #eee;
+  font-size: 0.9rem;
+}
+
+.task-form input {
+  flex: 1;
+}
+
+.task-form button {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  background: #4caf50;
+  color: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.task-form button:hover {
+  background: #43a047;
+}
+
+.task-list {
+  list-style: none;
+}
+
+.task-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 1rem;
+  background: #1a1a3e;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  border: 1px solid #2a2a4a;
+}
+
+.task-item .task-info {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.task-item .task-name {
+  font-weight: 500;
+}
+
+.task-item .task-status {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 10px;
+  text-transform: uppercase;
+}
+
+.task-status.active {
+  background: #1b5e20;
+  color: #81c784;
+}
+
+.task-status.inactive {
+  background: #4a1a1a;
+  color: #e57373;
+}
+
+.delete-btn {
+  background: #e5737333;
+  color: #e57373;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.delete-btn:hover {
+  background: #e5737355;
+}
+
+/* Build Summary */
+.summary-section {
+  margin-bottom: 1rem;
+}
+
+.summary-section h4 {
+  color: #667eea;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.endpoint-list {
+  list-style: none;
+}
+
+.endpoint-list li {
+  padding: 0.4rem 0;
+  font-size: 0.85rem;
+  font-family: monospace;
+}
+
+.endpoint-list .method {
+  display: inline-block;
+  width: 60px;
+  font-weight: bold;
+  color: #4caf50;
+}
+
+.stories-list {
+  list-style: none;
+}
+
+.stories-list li {
+  padding: 0.3rem 0;
+  font-size: 0.85rem;
+}
+
+.stories-list .story-id {
+  color: #667eea;
+  font-weight: bold;
+  margin-right: 0.5rem;
+}
+
+.loading {
+  text-align: center;
+  color: #888;
+  padding: 2rem;
+}
