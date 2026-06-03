@@ -1,0 +1,92 @@
+══════════════════════════════════════════════════════════════
+NEBULA - SIMPLIFIED EXPLANATION
+══════════════════════════════════════════════════════════════
+
+THE PROBLEM IT SOLVES:
+──────────────────────
+
+When you use AI (ChatGPT/Claude/Copilot) to build software:
+
+  1. You explain everything from scratch EVERY session
+  2. AI forgets context between conversations
+  3. You repeat the same workflow manually:
+     "Plan this" → "No, fix this" → "Now build it" → "Wrong, try again"
+  4. AI generates code that LOOKS right but has hidden problems:
+     - API exists but doesn't match the spec
+     - UI works but shows wrong data to wrong user
+     - Feature works alone but breaks when combined with others
+  5. No quality checks - you catch errors only when things break
+
+This wastes time. You're re-teaching AI the same things over and over.
+
+──────────────────────────────────────────────────────────────
+
+THE SOLUTION (NEBULA):
+──────────────────────
+
+Write down the workflow ONCE as files in a repo.
+AI reads those files and follows the process automatically.
+
+Think of it like:
+  WITHOUT Nebula = Hiring a new intern every day, briefing from scratch
+  WITH Nebula    = Having a team with written job descriptions and checklists
+
+──────────────────────────────────────────────────────────────
+
+HOW IT WORKS (Simple Version):
+──────────────────────────────
+
+STEP 1: Define WHO does what (Roles)
+  - Product Manager → writes requirements (WHAT to build)
+  - Architect → designs solution (HOW to build)
+  - Developer → writes code
+  - QA → writes tests
+  - Reviewer → checks quality
+
+STEP 2: Define the WORKFLOW (Actions)
+  Plan → Design → Build → Test → Review → Ship
+  Each step has a GATE (checkpoint) before moving to next.
+
+STEP 3: AI reads these definitions and follows them
+  Instead of: "Hey AI, help me build a feature" (vague)
+  You say:    "Run the plan action for feature X" (structured)
+  AI knows exactly what to do, what to produce, and when to stop.
+
+──────────────────────────────────────────────────────────────
+
+THE TWO REPOS (Simple Version):
+───────────────────────────────
+
+REPO 1: nebula-agents = THE RULEBOOK
+  - "Here's how to plan a feature"
+  - "Here's what each role is responsible for"
+  - "Here's what quality checks must pass"
+  - Written in plain text files (markdown)
+  - Works with ANY AI tool
+
+REPO 2: nebula-insurance-crm = THE ACTUAL APP
+  - An insurance CRM built USING those rules
+  - Has backend (C#), frontend (React), AI layer (Python)
+  - Proves the rulebook actually works on real complex software
+
+  Rulebook (nebula-agents) + Real App (nebula-insurance-crm) = the system
+
+──────────────────────────────────────────────────────────────
+
+WHY TWO REPOS?
+──────────────
+
+  - Rulebook is REUSABLE (can use it for any project)
+  - App is SPECIFIC (insurance domain)
+  - If something breaks, you know if it's a rule problem or code problem
+
+──────────────────────────────────────────────────────────────
+
+ONE SENTENCE SUMMARY:
+─────────────────────
+
+"Nebula is a set of written rules that tell AI tools how to build software 
+ step-by-step, with quality checkpoints, so you don't have to re-explain 
+ everything every time."
+
+══════════════════════════════════════════════════════════════

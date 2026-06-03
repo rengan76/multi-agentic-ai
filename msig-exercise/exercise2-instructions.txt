@@ -1,0 +1,132 @@
+══════════════════════════════════════════════════════════════
+EXERCISE 2: Repo Review + Gap Analysis
+══════════════════════════════════════════════════════════════
+
+INSTRUCTIONS:
+- Use the prompt below in an AI tool (Claude Code, Codex, or Copilot)
+- Walk through the output during the interview
+- Then use the follow-up prompt to identify gaps
+
+──────────────────────────────────────────────────────────────
+STEP 1 - INITIAL PROMPT (copy-paste this into Claude/Codex):
+──────────────────────────────────────────────────────────────
+
+Review these two repos http://github.com/gajakannan/nebula-agents/ and 
+http://github.com/gajakannan/nebula-insurance-crm and walk me through 
+the purpose.
+
+MY EXPERIENCE LEVEL ABOUT AI AGENTIC DEVELOPMENT, TECH SKILLS ARE:
+
+- 8+ years in enterprise software development (Python, Node.js, React, PHP)
+- Built Azure OpenAI + Figma-based parser/automation solution at Centene 
+  that extracted UI/flow structures from Figma and converted them into 
+  structured outputs for downstream development and testing workflows
+- Built AI-assisted BDD and test artifact generation pipelines
+- Experience with LLM-driven automation including MCP, Azure OpenAI, 
+  and agent-based workflows to reduce SDLC effort
+- Enterprise integration workflows using Python, Node.js, and cloud services
+- Healthcare systems workflow automation at Northwell Health covering 
+  platform modernization and distributed systems
+- Polyglot development (Python, Node.js, React, PHP, familiar with C#)
+- Understanding of agentic AI patterns, prompt engineering, and 
+  AI-augmented software engineering
+- Experience converting user stories and design inputs into structured 
+  BDD and test artifacts
+
+──────────────────────────────────────────────────────────────
+STEP 2 - FOLLOW-UP PROMPT (after getting Step 1 response):
+──────────────────────────────────────────────────────────────
+
+Identify the gaps and how do I fix them
+
+──────────────────────────────────────────────────────────────
+WHAT THE REPOS ARE (so you know what to expect):
+──────────────────────────────────────────────────────────────
+
+REPO 1: nebula-agents
+URL: https://github.com/gajakannan/nebula-agents
+Purpose: Tool-agnostic agent-driven development FRAMEWORK
+Languages: Python 91.4%, Shell 8.4%, Dockerfile 0.2%
+Key folders:
+  agents/<role>/SKILL.md    → Role contracts (11 roles)
+  agents/actions/*.md       → Action flows (9 actions)
+  agents/templates/prompts/ → Prompt templates
+  agents/scripts/           → Validation scripts
+  CONSUMER-CONTRACT.md      → Ownership split between framework and product
+  BOUNDARY-POLICY.md        → What framework owns vs product owns
+
+REPO 2: nebula-insurance-crm
+URL: https://github.com/gajakannan/nebula-insurance-crm
+Purpose: Commercial P&C Insurance CRM (the product BUILT by the framework)
+Languages: C# 46.8%, TypeScript 39.4%, Python 10.6%, Shell 1.5%
+Key folders:
+  engine/          → C# .NET backend
+  experience/      → React + TypeScript frontend
+  neuron/          → Python AI layer
+  planning-mds/    → Full planning structure
+  docker/          → PostgreSQL, Authentik
+  scripts/kg/      → Knowledge graph tooling
+  bruno/           → API contract tests
+
+RELATIONSHIP:
+  WORKSPACE_ROOT/
+  ├── nebula-agents/           ← Framework (HOW to work)
+  └── nebula-insurance-crm/    ← Product (WHAT to work against)
+  
+  No SDK. No submodule. No coupling. Just markdown.
+
+──────────────────────────────────────────────────────────────
+EXPECTED GAPS (prepare answers for these):
+──────────────────────────────────────────────────────────────
+
+Gap 1: C# .NET backend
+Your answer: "Framework is language-agnostic. My Node.js/Python API patterns 
+transfer directly - controllers, services, repositories are the same pattern. 
+I can pick up C# quickly."
+
+Gap 2: Insurance domain knowledge
+Your answer: "I've reviewed the glossary and BLUEPRINT. P&C concepts like 
+policy lifecycle, endorsements, submissions map to healthcare workflow 
+patterns I built at Northwell Health. Complex domain transitions are 
+familiar territory."
+
+Gap 3: Multi-agent framework (haven't built one from scratch)
+Your answer: "I've built AI pipelines with MCP and Azure OpenAI at Centene. 
+Nebula is actually simpler than it looks - it's markdown contracts, not code. 
+The AI tool IS the runtime. No orchestrator to build."
+
+Gap 4: Knowledge graph tooling
+Your answer: "The KG here is canonical-nodes + ontology in YAML/JSON, not a 
+graph database. It's a structured way to keep domain concepts in sync. 
+I can work with structured data formats."
+
+Gap 5: Authentik identity provider
+Your answer: "Authentik is just the chosen IdP. My OAuth/OIDC experience 
+transfers directly. It's a Docker container with config."
+
+──────────────────────────────────────────────────────────────
+YOUR STRENGTHS TO HIGHLIGHT:
+──────────────────────────────────────────────────────────────
+
+Your Experience → Maps to Nebula:
+
+Azure OpenAI + Figma parser     → AI Engineer agent role
+MCP workflows                   → neuron/ AI runtime layer
+BDD artifact generation         → Quality Engineer agent
+Python/Node.js/React            → Polyglot product stack
+Enterprise integration          → Backend developer patterns
+Healthcare workflow automation  → Insurance workflow complexity
+SDLC optimization through AI   → Core value proposition of Nebula
+
+──────────────────────────────────────────────────────────────
+WHAT THEY ARE LOOKING FOR:
+──────────────────────────────────────────────────────────────
+
+NOT traditional software engineering.
+They want someone who:
+1. Understands AI-DRIVEN development (not just using ChatGPT)
+2. Can work in a STRUCTURED agentic workflow
+3. Has polyglot capability (multiple languages)
+4. Can leverage AI to REDUCE engineering time
+5. Understands role boundaries and quality gates
+6. Can walk through repos showing genuine understanding

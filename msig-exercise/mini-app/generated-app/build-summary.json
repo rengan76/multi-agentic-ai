@@ -1,0 +1,56 @@
+{
+  "feature": "tasks",
+  "builtBy": "Agent workflow (PM → Architect → Developer → QA)",
+  "stories": [
+    {
+      "id": "S1",
+      "title": "View all tasks",
+      "acceptance": "Shows list with name, status"
+    },
+    {
+      "id": "S2",
+      "title": "Add new tasks",
+      "acceptance": "Form with validation, saves to DB"
+    },
+    {
+      "id": "S3",
+      "title": "Delete tasks",
+      "acceptance": "Confirms before delete, removes from list"
+    }
+  ],
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/tasks",
+      "desc": "List all"
+    },
+    {
+      "method": "POST",
+      "path": "/tasks",
+      "desc": "Create new"
+    },
+    {
+      "method": "DELETE",
+      "path": "/tasks/:id",
+      "desc": "Delete by id"
+    }
+  ],
+  "files": [
+    "routes/tasks.js"
+  ],
+  "tests": [
+    {
+      "endpoint": "GET /tasks",
+      "passed": true
+    },
+    {
+      "endpoint": "POST /tasks",
+      "passed": true
+    },
+    {
+      "endpoint": "DELETE /tasks/:id",
+      "passed": true
+    }
+  ],
+  "allGatesPassed": true
+}

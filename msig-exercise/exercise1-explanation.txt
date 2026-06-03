@@ -1,0 +1,276 @@
+══════════════════════════════════════════════════════════════
+EXERCISE 1: Explain the Article + Sample Code
+══════════════════════════════════════════════════════════════
+
+ARTICLE: "The Bet Behind Nebula: When the Prompt Became the Tool"
+BY: Gajapathi Kannan
+LINK: https://helloinsurance.substack.com/p/the-bet-behind-nebula-when-the-prompt
+
+──────────────────────────────────────────────────────────────
+WHAT THE ARTICLE SAYS (Summary to explain in interview):
+──────────────────────────────────────────────────────────────
+
+The Problem:
+- Every AI session follows the same pattern: Plan → Push back → Design → 
+  Push back → Build → Review → Fix → Verify → Ship
+- This workflow was being REPEATED manually every session
+- The workflow lived in the developer's HEAD - fragile and unrepeatable
+
+The Solution (Nebula):
+- Turn that repeated workflow into DURABLE MARKDOWN CONTRACTS
+- Contracts are: versioned, reviewable, reusable, improvable
+- Organized into: Roles, Actions, Templates, Validators
+
+The Key Quote:
+"A prompt can become a TOOL when it is durable, versioned, reviewable, 
+ and connected to real artifacts."
+
+Map vs Territory (Alfred Korzybski):
+- Maps = prompts, specs, agent roles, validators, stories
+- Territory = actual code, failing tests, real workflows, user behavior
+- Nebula makes the map durable enough to CORRECT when territory proves it wrong
+
+Where Things Break:
+- NOT syntax errors - COORDINATION failures
+- Code compiles, UI renders, BUT system drifts:
+  * Endpoint exists but schema doesn't match
+  * UI renders but role boundary is wrong
+  * Tests pass but domain invariant not represented
+  * Feature works but audit trail missing
+
+The Bet:
+"The only honest way to validate a framework is to make it build real product 
+ work in a domain opinionated enough to expose its gaps."
+
+──────────────────────────────────────────────────────────────
+THE FRAMEWORK STRUCTURE (what to show):
+──────────────────────────────────────────────────────────────
+
+11 Agent Roles:
+  Planning:      product-manager, architect
+  Implementation: backend-developer, frontend-developer, ai-engineer, 
+                  quality-engineer, devops
+  Quality:       code-reviewer, security, technical-writer, blogger
+
+9 Actions:
+  init      → Bootstrap project structure
+  plan      → PM Phase A → Architect Phase B (2 approval gates)
+  build     → Backend + Frontend + AI + QA + DevOps → Review (2 gates)
+  feature   → Single vertical slice (all roles for one feature)
+  review    → Code Reviewer + Security (1 gate)
+  validate  → Architect + PM validation (read-only)
+  test      → Quality Engineer testing workflow
+  document  → Technical Writer documentation
+  blog      → Blogger dev logs
+
+How the Plan Action Works:
+  Product Manager (Phase A)
+    ↓
+  [APPROVAL GATE: User reviews requirements]
+    ↓
+  Architect (Phase B)
+    ↓
+  [ONTOLOGY SYNC GATE: Feature mapping aligned]
+    ↓
+  [APPROVAL GATE: User reviews architecture]
+    ↓
+  Ready for Build
+
+──────────────────────────────────────────────────────────────
+SAMPLE CODE (to show during interview):
+──────────────────────────────────────────────────────────────
+
+// --- Sample 1: Agent Role Definition ---
+
+const productManagerAgent = {
+    role: "product-manager",
+    responsibility: "Define WHAT to build, not HOW",
+    inScope: ["PRD", "Stories", "Acceptance criteria", "Screen responsibilities"],
+    outOfScope: ["Architecture", "Code", "Database schema", "API design"],
+    
+    execute: function(feature) {
+        return {
+            prd: `PRD-${feature.id}.md`,
+            stories: feature.stories.map(s => `${s.id}.md`),
+            trackers: ["REGISTRY.md", "ROADMAP.md", "STORY-INDEX.md"]
+        };
+    }
+};
+
+const architectAgent = {
+    role: "architect",
+    responsibility: "Design HOW to build it",
+    inScope: ["Solution patterns", "API contracts", "Data model", "ADRs"],
+    outOfScope: ["Business requirements", "Code implementation"],
+    
+    execute: function(pmArtifacts) {
+        return {
+            apiContract: "nebula-api.yaml",
+            dataModel: "data-model.md",
+            adr: "ADR-001.md",
+            schemas: ["policy.json", "submission.json"]
+        };
+    }
+};
+
+
+// --- Sample 2: Action Flow (Plan Action) ---
+
+async function planAction(feature) {
+    console.log("=== PLAN ACTION ===");
+    
+    // Phase A: Product Manager
+    console.log("Phase A: Product Manager");
+    const pmOutput = productManagerAgent.execute(feature);
+    console.log("  Produced:", pmOutput);
+    
+    // GATE: User approval
+    const approved = await userApprovalGate(pmOutput);
+    if (!approved) return { success: false, reason: "PM phase rejected" };
+    
+    // Phase B: Architect
+    console.log("Phase B: Architect");
+    const archOutput = architectAgent.execute(pmOutput);
+    console.log("  Produced:", archOutput);
+    
+    // GATE: Ontology sync
+    const synced = validateOntologySync(archOutput);
+    if (!synced) return { success: false, reason: "Ontology not in sync" };
+    
+    return { success: true, artifacts: { ...pmOutput, ...archOutput } };
+}
+
+
+// --- Sample 3: Validation Gate ---
+
+function validateOntologySync(architectOutput) {
+    // In real Nebula: Python script checks canonical nodes match implementation
+    const required = ["apiContract", "dataModel", "schemas"];
+    const missing = required.filter(r => !architectOutput[r]);
+    
+    if (missing.length > 0) {
+        console.log("  ⛔ GATE FAILED: Missing:", missing);
+        return false;
+    }
+    console.log("  ✅ GATE PASSED: All artifacts present");
+    return true;
+}
+
+function userApprovalGate(artifacts) {
+    // In real Nebula: waits for human review and approval
+    console.log("  ⛔ GATE: Waiting for user approval...");
+    console.log("  ✅ GATE PASSED: User approved");
+    return true;
+}
+
+
+// --- Sample 4: Build Action (parallel agents) ---
+
+async function buildAction(planArtifacts) {
+    console.log("=== BUILD ACTION ===");
+    
+    // Backend + Frontend run in PARALLEL
+    const [backendResult, frontendResult] = await Promise.all([
+        backendDeveloper(planArtifacts),
+        frontendDeveloper(planArtifacts)
+    ]);
+    
+    // QA runs AFTER implementation
+    const qaResult = await qualityEngineer(backendResult, frontendResult);
+    
+    // GATE: Tests must pass
+    if (!qaResult.allPassed) {
+        return { success: false, reason: "Tests failed" };
+    }
+    
+    // Code review
+    const reviewResult = await codeReviewer(backendResult, frontendResult);
+    
+    return { success: true, results: { backendResult, frontendResult, qaResult } };
+}
+
+function backendDeveloper(plan) {
+    return { files: ["controllers/", "services/", "models/"], endpoints: 3 };
+}
+
+function frontendDeveloper(plan) {
+    return { files: ["components/", "pages/", "hooks/"], screens: 2 };
+}
+
+function qualityEngineer(backend, frontend) {
+    return { allPassed: true, coverage: "87%", tests: 24 };
+}
+
+function codeReviewer(backend, frontend) {
+    return { approved: true, findings: ["Minor: extract shared validation"] };
+}
+
+
+// --- Sample 5: Full Feature Flow ---
+
+async function featureAction(featureId, featureName) {
+    console.log(`\n=== FEATURE: ${featureId} - ${featureName} ===\n`);
+    
+    const feature = {
+        id: featureId,
+        name: featureName,
+        stories: [
+            { id: "S001", title: "View policy summary" },
+            { id: "S002", title: "Create new policy" },
+            { id: "S003", title: "Edit policy details" }
+        ]
+    };
+    
+    // Step 1: Plan
+    const planResult = await planAction(feature);
+    if (!planResult.success) return planResult;
+    
+    // Step 2: Build
+    const buildResult = await buildAction(planResult.artifacts);
+    if (!buildResult.success) return buildResult;
+    
+    console.log("\n✅ Feature complete. Ready for deployment.");
+    return { success: true };
+}
+
+// Run it:
+// featureAction("F0018", "Policy Lifecycle");
+
+
+// --- Sample 6: Prompt Evolution (disposable → durable) ---
+
+const disposablePrompt = "Help me plan this feature.";
+
+const durablePrompt = `
+Run the plan action for F0018 Policy Lifecycle and Policy 360.
+Use nebula-insurance-crm as {PRODUCT_ROOT}.
+Start with Product Manager Phase A:
+- read the existing BLUEPRINT
+- inspect the feature folder if it exists
+- update PRD, stories, screen responsibilities, trackers, and feature mappings
+- stop at the Phase A approval gate before moving to architecture
+Do not make architecture, API, database, or implementation decisions in Phase A.
+If business rules are unclear, ask instead of inventing them.
+`;
+
+// The difference:
+// - Disposable: lives in chat, forgotten next session
+// - Durable: checked into repo, versioned, references artifacts and gates
+
+
+Key point to make in interview:
+"In the real Nebula, agents are NOT code classes - they're SKILL.md markdown 
+ files. The AI tool (Claude/Codex) IS the runtime. This code shows the PATTERN 
+ so you can see I understand the architecture."
+
+──────────────────────────────────────────────────────────────
+WHAT THEY WANT YOU TO SAY:
+──────────────────────────────────────────────────────────────
+
+60-Second Pitch:
+"Nebula turns disposable prompts into versioned tools. Instead of re-teaching 
+ AI every session, the framework defines WHO does what (roles), HOW work flows 
+ (actions), and WHAT must pass (gates). The insurance CRM stress-tests it - 
+ complex enough to expose weak assumptions. The key insight is that most AI 
+ failures in real systems are coordination failures, not syntax errors. Nebula 
+ treats that as a framework problem."

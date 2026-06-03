@@ -1,0 +1,226 @@
+╔══════════════════════════════════════════════════════════════╗
+║  MSIG INTERVIEW - 10 KEY QUESTIONS & ANSWERS                ║
+╚══════════════════════════════════════════════════════════════╝
+
+────────────────────────────────────────────────────────────
+Q1: Explain the Nebula article concepts
+────────────────────────────────────────────────────────────
+
+A: Nebula turns disposable AI prompts into durable, versioned markdown contracts.
+   Instead of re-teaching AI every session, you define:
+   - Roles (WHO does what - 11 agents)
+   - Actions (HOW work flows - 9 actions)
+   - Gates (WHAT must pass before moving on)
+   
+   The core idea from the article (by Gajapathi Kannan):
+   "A prompt can become a TOOL when it is durable, versioned, reviewable, 
+    and connected to real artifacts."
+   
+   The insurance CRM is the proving ground - it's complex enough to expose 
+   when the framework's assumptions are wrong. Most AI failures aren't syntax 
+   errors, they're COORDINATION failures.
+
+────────────────────────────────────────────────────────────
+Q2: Walk me through the two repos - what is their purpose?
+────────────────────────────────────────────────────────────
+
+A: nebula-agents (Framework):
+   - 11 agent roles (PM, Architect, Backend Dev, Frontend Dev, AI Engineer, 
+     QE, DevOps, Code Reviewer, Security, Tech Writer, Blogger)
+   - 9 actions (init, plan, build, feature, review, validate, test, document, blog)
+   - Validation scripts in Python
+   - Tool-agnostic: works with Claude, Codex, Copilot, anything
+   - Just plain markdown contracts - no SDK, no runtime dependency
+
+   nebula-insurance-crm (Product):
+   - Commercial P&C Insurance CRM
+   - C# .NET backend (engine/)
+   - React + TypeScript frontend (experience/)
+   - Python AI layer (neuron/)
+   - PostgreSQL + Authentik (identity)
+   - Full planning structure: BLUEPRINT.md, features/, knowledge-graph/
+
+   Relationship:
+   - They sit SIDE BY SIDE as sibling repos
+   - Session starts in nebula-agents/, implements into nebula-insurance-crm/
+   - No SDK, no submodule, no coupling - just markdown telling AI how to work
+
+────────────────────────────────────────────────────────────
+Q3: How would you use AI to speed up development?
+────────────────────────────────────────────────────────────
+
+A: Instead of writing code from scratch, I define features through structured 
+   planning first:
+   1. Write stories with clear acceptance criteria
+   2. Define screen responsibilities and workflows
+   3. Use AI with role-specific prompts that reference durable contracts
+   4. AI follows the action workflow (plan → build → review)
+   5. Validation gates check output before moving forward
+   
+   The AI doesn't improvise. It reads the SKILL.md, knows its boundaries, 
+   knows what to produce, and knows where to stop.
+   
+   This eliminates re-teaching - instead of 30 minutes per session explaining 
+   context, the contracts carry that knowledge automatically.
+
+────────────────────────────────────────────────────────────
+Q4: What is the difference between using ChatGPT and agentic development?
+────────────────────────────────────────────────────────────
+
+A: ChatGPT: Single conversation, one-off, no memory, no structure.
+   You re-explain everything every time. Workflow lives in your HEAD.
+
+   Agentic Development: A SYSTEM with:
+   - Multiple specialized agents with clear ownership boundaries
+   - Gates that prevent drift between phases
+   - Artifacts that persist between sessions (checked into repo)
+   - Versioned contracts that improve over time
+   - The workflow is in the REPO, not in your head
+   
+   Think of it like: ChatGPT is a freelancer you brief from scratch every time.
+   Agentic development is a team with written job descriptions, processes, 
+   and quality checks.
+
+────────────────────────────────────────────────────────────
+Q5: How do you handle when AI generates wrong code?
+────────────────────────────────────────────────────────────
+
+A: That's what validation gates solve. The framework doesn't trust AI blindly.
+
+   Gates check:
+   - Does the API match the OpenAPI spec? (solution_contract)
+   - Are knowledge graph nodes in sync? (knowledge_graph_sync)
+   - Do frontend components meet quality standards? (frontend_quality)
+   - Is the framework free of domain-specific terms? (genericness)
+
+   When a gate FAILS, you know exactly WHERE and WHY it broke.
+   Then you fix either:
+   - The implementation (if the code is wrong)
+   - The framework contract (if the instruction was unclear)
+   
+   This is the feedback loop - failures improve the system, not just fix one output.
+
+────────────────────────────────────────────────────────────
+Q6: What are your gaps and how will you fix them?
+────────────────────────────────────────────────────────────
+
+A: Gap 1: C# .NET (their backend is C#)
+   Fix: The framework is language-agnostic. My Node.js/Python API patterns 
+        transfer directly - controllers, services, repositories are the same pattern.
+
+   Gap 2: Insurance domain specifics
+   Fix: I've reviewed the glossary and BLUEPRINT. P&C concepts (policy lifecycle, 
+        endorsements, submissions) map to healthcare workflow patterns I've built 
+        at Northwell Health.
+
+   Gap 3: Haven't built a multi-agent framework from scratch
+   Fix: I've built AI pipelines with MCP and Azure OpenAI at Centene. Nebula's 
+        approach is actually simpler - it's markdown contracts, not code. 
+        The AI tool IS the runtime.
+
+   My strengths that directly apply:
+   - Azure OpenAI + Figma automation → AI Engineer agent role
+   - MCP workflows → neuron/ AI layer
+   - BDD artifact generation → Quality Engineer agent
+   - Polyglot (Python, Node.js, React) → multi-stack product
+
+────────────────────────────────────────────────────────────
+Q7: What is your approach to building a new feature?
+────────────────────────────────────────────────────────────
+
+A: The Nebula approach (which I align with):
+
+   Phase A - PLAN (Product Manager):
+   → Read BLUEPRINT, define PRD, write stories, acceptance criteria
+   → Produce: Feature folder, story files, screen responsibilities
+   ⛔ GATE: User approval before architecture starts
+
+   Phase B - DESIGN (Architect):
+   → Read approved PM artifacts, design solution
+   → Produce: API contracts, data model, ADRs, schemas
+   ⛔ GATE: Ontology sync + user approval before build
+
+   Phase C - BUILD (parallel):
+   → Backend Developer: APIs, domain logic, migrations
+   → Frontend Developer: Components, forms, client state
+   → Quality Engineer: Unit + integration + E2E tests
+   ⛔ GATE: Tests pass
+
+   Phase D - REVIEW:
+   → Code Reviewer + Security check
+   ⛔ GATE: Review approval before deployment
+
+   Key: No phase starts until previous is APPROVED.
+
+────────────────────────────────────────────────────────────
+Q8: How does this reduce engineering time?
+────────────────────────────────────────────────────────────
+
+A: Three ways:
+
+   1. Eliminates re-teaching:
+      Without framework: 30 min/session explaining context to AI
+      With framework: AI reads SKILL.md and knows its boundaries instantly
+
+   2. Parallel agent execution:
+      Backend and Frontend can work simultaneously once architecture is approved.
+      QA generates tests in parallel with implementation.
+
+   3. Prevents rework:
+      Gates catch drift EARLY. Without gates, you discover mismatches 
+      in production. With gates, you catch them before the next phase starts.
+      
+   Real example: In F0018 (Policy Lifecycle), the planning commit alone produced 
+   11 story files, API contracts, schemas, security policy, and KG updates - 
+   all BEFORE a single line of implementation code was written.
+
+────────────────────────────────────────────────────────────
+Q9: What are coordination failures? Give examples.
+────────────────────────────────────────────────────────────
+
+A: NOT syntax errors. The code compiles, the UI renders, BUT:
+
+   - Endpoint exists but schema doesn't match the API contract
+   - UI renders but role boundary is wrong (showing admin data to broker)
+   - Tests pass but domain invariant is not represented 
+     (e.g., policy cancellation without checking reinstatement eligibility)
+   - Feature works locally but next feature rediscovers same context from scratch
+   - API and frontend present but audit trail is missing
+   - Status transition works but authorization rule not enforced
+
+   In insurance specifically:
+   - Policy looks complete but lifecycle implication not represented
+   - Submission workflow exists but carrier relationship not linked
+   - Account 360 shows data but commission calculation is inconsistent
+
+   Nebula's solution: Role ownership + validation gates catch these BEFORE deployment.
+
+────────────────────────────────────────────────────────────
+Q10: Why two repos instead of one?
+────────────────────────────────────────────────────────────
+
+A: Separation of concerns:
+
+   nebula-agents (Framework):
+   - Tells AI HOW to work
+   - Reusable across ANY project (not just insurance)
+   - Validated by genericness check (no domain terms allowed)
+   
+   nebula-insurance-crm (Product):
+   - Gives AI WHAT to work against
+   - Specific domain: insurance workflows, policies, brokers
+   - Has its own lifecycle gates (KG sync, API contract, frontend quality)
+
+   Why this matters:
+   - If they're mixed, you can't tell if a failure is a FRAMEWORK problem 
+     or a DOMAIN problem
+   - Framework can be forked for other products (healthcare CRM, fintech app)
+   - Product can switch AI tools without changing anything
+   - The boundary TEACHES you where assumptions lived in your head vs in the system
+
+   History: Started as one repo (nebula-crm, 158 commits). Split on April 18, 2026 
+   when it became clear they were two separate products with a real contract between them.
+
+══════════════════════════════════════════════════════════════
+DONE - Review these answers before the interview.
+══════════════════════════════════════════════════════════════
