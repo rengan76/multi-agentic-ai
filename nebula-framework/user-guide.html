@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nebula Agent Framework - User Guide</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #0ea5e9;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+            border-radius: 0 0 2rem 2rem;
+            margin-bottom: 3rem;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        /* Sections */
+        section {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid var(--border);
+        }
+
+        section h2 {
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        section h3 {
+            color: var(--text);
+            font-size: 1.15rem;
+            margin: 1.5rem 0 0.5rem;
+        }
+
+        /* Pipeline Flow */
+        .pipeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin: 2rem 0;
+        }
+
+        .pipeline-step {
+            display: flex;
+            align-items: stretch;
+            gap: 1.5rem;
+        }
+
+        .pipeline-connector {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 60px;
+            flex-shrink: 0;
+        }
+
+        .step-number {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .connector-line {
+            width: 3px;
+            flex-grow: 1;
+            min-height: 20px;
+        }
+
+        .step-content {
+            flex: 1;
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid;
+        }
+
+        .step-content h4 {
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .step-content p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .step-content .output-label {
+            display: inline-block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: rgba(0,0,0,0.05);
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+        }
+
+        /* Step Colors */
+        .step-pm .step-number, .step-pm .connector-line { background: #8b5cf6; }
+        .step-pm .step-content { background: #f5f3ff; border-color: #8b5cf6; }
+
+        .step-arch .step-number, .step-arch .connector-line { background: #0ea5e9; }
+        .step-arch .step-content { background: #f0f9ff; border-color: #0ea5e9; }
+
+        .step-dev .step-number, .step-dev .connector-line { background: #10b981; }
+        .step-dev .step-content { background: #ecfdf5; border-color: #10b981; }
+
+        .step-qa .step-number, .step-qa .connector-line { background: #f59e0b; }
+        .step-qa .step-content { background: #fffbeb; border-color: #f59e0b; }
+
+        .step-review .step-number, .step-review .connector-line { background: #ef4444; }
+        .step-review .step-content { background: #fef2f2; border-color: #ef4444; }
+
+        /* Gate Box */
+        .gate-box {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            padding: 0.4rem 0.75rem;
+            background: rgba(0,0,0,0.03);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            width: fit-content;
+        }
+
+        .gate-box .gate-icon {
+            font-size: 1rem;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--bg);
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+        }
+
+        tr:hover td {
+            background: #f8fafc;
+        }
+
+        /* Code blocks */
+        code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 0.88rem;
+        }
+
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1.25rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            font-size: 0.88rem;
+            line-height: 1.6;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        /* Info boxes */
+        .info-box {
+            padding: 1rem 1.25rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            font-size: 0.92rem;
+        }
+
+        .info-box.tip {
+            background: #ecfdf5;
+            border-left: 4px solid var(--success);
+        }
+
+        .info-box.warning {
+            background: #fffbeb;
+            border-left: 4px solid var(--warning);
+        }
+
+        .info-box.note {
+            background: #f0f9ff;
+            border-left: 4px solid var(--secondary);
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        /* Admin section */
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .config-card {
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            background: var(--bg);
+        }
+
+        .config-card .label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .config-card .value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 0.25rem;
+        }
+
+        /* How-to steps */
+        .howto-list {
+            list-style: none;
+            counter-reset: howto;
+        }
+
+        .howto-list li {
+            counter-increment: howto;
+            padding: 0.75rem 0 0.75rem 3rem;
+            position: relative;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .howto-list li:last-child {
+            border-bottom: none;
+        }
+
+        .howto-list li::before {
+            content: counter(howto);
+            position: absolute;
+            left: 0;
+            width: 2rem;
+            height: 2rem;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-mock { background: #fef3c7; color: #92400e; }
+        .badge-openai { background: #dbeafe; color: #1e40af; }
+        .badge-azure { background: #e0e7ff; color: #3730a3; }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            header { padding: 2rem 1rem; }
+            header h1 { font-size: 1.8rem; }
+            section { padding: 1.5rem; }
+            .pipeline-step { gap: 1rem; }
+            .config-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Nebula Agent Framework</h1>
+    <p>Multi-Agent AI Orchestration &mdash; End User Guide</p>
+</header>
+
+<div class="container">
+
+    <!-- Overview -->
+    <section>
+        <h2>What Is This?</h2>
+        <p>
+            Nebula is a <strong>multi-agent AI framework</strong> that automates software development workflows.
+            Instead of one AI doing everything, it uses <strong>specialized AI agents</strong> (Product Manager, Architect,
+            Developer, QA, Reviewer) that work in sequence &mdash; each passing its output to the next, like a real development team.
+        </p>
+        <div class="info-box tip">
+            <strong>Key Concept</strong>
+            You give it a feature name (e.g., "user-authentication"), and the framework produces requirements,
+            architecture, code, tests, and a code review &mdash; all automatically.
+        </div>
+    </section>
+
+    <!-- How It Works - Pipeline -->
+    <section>
+        <h2>How It Works &mdash; The Pipeline</h2>
+        <p>Every workflow follows a strict sequence. Each step must <strong>pass its quality gate</strong> before the next step begins.</p>
+
+        <div class="pipeline">
+            <!-- Step 1: PM -->
+            <div class="pipeline-step step-pm">
+                <div class="pipeline-connector">
+                    <div class="step-number">1</div>
+                    <div class="connector-line"></div>
+                </div>
+                <div class="step-content">
+                    <h4>Product Manager</h4>
+                    <p>Defines <strong>WHAT</strong> to build &mdash; writes user stories, acceptance criteria, non-functional requirements, and out-of-scope items.</p>
+                    <div class="gate-box"><span class="gate-icon">🚧</span> Gate: Stories exist with acceptance criteria</div>
+                    <span class="output-label">Output → feeds into Step 2</span>
+                </div>
+            </div>
+
+            <!-- Step 2: Architect -->
+            <div class="pipeline-step step-arch">
+                <div class="pipeline-connector">
+                    <div class="step-number">2</div>
+                    <div class="connector-line"></div>
+                </div>
+                <div class="step-content">
+                    <h4>Architect</h4>
+                    <p>Designs <strong>HOW</strong> to build it &mdash; REST API endpoints, database schema, and architectural decisions.</p>
+                    <div class="gate-box"><span class="gate-icon">🚧</span> Gate: Endpoints + data model defined</div>
+                    <span class="output-label">Output → feeds into Steps 3, 4, 5</span>
+                </div>
+            </div>
+
+            <!-- Step 3: Developer -->
+            <div class="pipeline-step step-dev">
+                <div class="pipeline-connector">
+                    <div class="step-number">3</div>
+                    <div class="connector-line"></div>
+                </div>
+                <div class="step-content">
+                    <h4>Backend Developer</h4>
+                    <p><strong>Implements the code</strong> &mdash; controllers, services, repositories, models, and database migrations following the architecture exactly.</p>
+                    <div class="gate-box"><span class="gate-icon">🚧</span> Gate: At least 1 file with &gt;100 chars + migrations</div>
+                    <span class="output-label">Output → feeds into Steps 4 &amp; 5</span>
+                </div>
+            </div>
+
+            <!-- Step 4: QA -->
+            <div class="pipeline-step step-qa">
+                <div class="pipeline-connector">
+                    <div class="step-number">4</div>
+                    <div class="connector-line"></div>
+                </div>
+                <div class="step-content">
+                    <h4>QA Engineer</h4>
+                    <p><strong>Tests the implementation</strong> against acceptance criteria &mdash; unit tests, integration tests, and e2e tests.</p>
+                    <div class="gate-box"><span class="gate-icon">🚧</span> Gate: All tests pass (allPassed = true)</div>
+                    <span class="output-label">Output → final validation</span>
+                </div>
+            </div>
+
+            <!-- Step 5: Reviewer -->
+            <div class="pipeline-step step-review">
+                <div class="pipeline-connector">
+                    <div class="step-number">5</div>
+                    <div class="connector-line" style="background: transparent;"></div>
+                </div>
+                <div class="step-content">
+                    <h4>Code Reviewer</h4>
+                    <p><strong>Reviews code quality</strong> &mdash; checks for security issues (OWASP), coding standards, and best practices.</p>
+                    <div class="gate-box"><span class="gate-icon">🚧</span> Gate: reviewResult = "approved"</div>
+                    <span class="output-label">Final step → Workflow complete ✓</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-box note">
+            <strong>What happens if a gate fails?</strong>
+            The step retries automatically (up to the configured max retries). If all retries fail, the entire workflow stops and is marked as FAILED.
+        </div>
+    </section>
+
+    <!-- How to Use -->
+    <section>
+        <h2>How to Use the App</h2>
+
+        <h3>Starting the Services</h3>
+        <p>You need to start <strong>two services</strong>:</p>
+
+        <table>
+            <thead>
+                <tr><th>Service</th><th>Command</th><th>URL</th><th>Purpose</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Backend API</strong></td>
+                    <td><code>npm run dev</code> (in <code>/nebula-framework</code>)</td>
+                    <td><code>http://localhost:4000</code></td>
+                    <td>Orchestrator engine + REST API</td>
+                </tr>
+                <tr>
+                    <td><strong>Dashboard</strong></td>
+                    <td><code>npm run dev</code> (in <code>/nebula-framework/dashboard</code>)</td>
+                    <td><code>http://localhost:3000</code></td>
+                    <td>Visual UI for monitoring &amp; control</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Executing a Workflow</h3>
+        <ul class="howto-list">
+            <li>Open the Dashboard at <code>http://localhost:3000</code></li>
+            <li>Go to the <strong>"Execute Workflow"</strong> section</li>
+            <li>Select a workflow type (e.g., <code>feature</code>, <code>plan</code>, <code>build</code>, <code>review</code>)</li>
+            <li>Enter a feature name (e.g., <code>user-authentication</code>)</li>
+            <li>Click <strong>Execute</strong> &mdash; watch the real-time event stream as each agent works</li>
+            <li>View results in the <strong>Task Board</strong> once complete</li>
+        </ul>
+
+        <h3>Or Use the API Directly</h3>
+<pre><code>POST http://localhost:4000/api/execute
+Content-Type: application/json
+
+{
+  "workflow": "feature",
+  "featureName": "user-authentication"
+}</code></pre>
+    </section>
+
+    <!-- Available Workflows -->
+    <section>
+        <h2>Available Workflows</h2>
+        <table>
+            <thead>
+                <tr><th>Workflow</th><th>Steps</th><th>Use When</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>feature</strong></td>
+                    <td>PM → Architect → Developer → QA → Reviewer</td>
+                    <td>Full feature development from scratch</td>
+                </tr>
+                <tr>
+                    <td><strong>plan</strong></td>
+                    <td>PM → Architect</td>
+                    <td>Planning only (no code generation)</td>
+                </tr>
+                <tr>
+                    <td><strong>build</strong></td>
+                    <td>Developer → QA → Reviewer</td>
+                    <td>Build from existing architecture docs</td>
+                </tr>
+                <tr>
+                    <td><strong>review</strong></td>
+                    <td>Code Reviewer only</td>
+                    <td>Review existing code</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- Quality Gates -->
+    <section>
+        <h2>Quality Gates (Rules)</h2>
+        <p>Each step has a <strong>quality gate</strong> &mdash; a set of validation rules that the AI output must satisfy before moving forward.</p>
+
+        <table>
+            <thead>
+                <tr><th>Gate</th><th>Applied After</th><th>Checks</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>requirements-complete</code></td>
+                    <td>Product Manager</td>
+                    <td>User stories exist, each has acceptance criteria, non-functional requirements defined</td>
+                </tr>
+                <tr>
+                    <td><code>design-approved</code></td>
+                    <td>Architect</td>
+                    <td>At least 1 API endpoint, data model defined, architectural decisions documented</td>
+                </tr>
+                <tr>
+                    <td><code>code-complete</code></td>
+                    <td>Backend Developer</td>
+                    <td>At least 1 file produced, code is substantive (&gt;100 chars), migrations included</td>
+                </tr>
+                <tr>
+                    <td><code>tests-pass</code></td>
+                    <td>QA Engineer</td>
+                    <td>All test suites pass, test count matches acceptance criteria</td>
+                </tr>
+                <tr>
+                    <td><code>review-approved</code></td>
+                    <td>Code Reviewer</td>
+                    <td>Review result is "approved", security checks passed</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="info-box warning">
+            <strong>Gate Failure = Retry</strong>
+            If a gate fails, the agent retries the LLM call with adjusted context. Default is up to 2-3 retries per step. After all retries are exhausted, the workflow fails.
+        </div>
+    </section>
+
+    <!-- Admin Panel -->
+    <section>
+        <h2>Admin Panel &mdash; Changing Rules &amp; Configuration</h2>
+        <p>The Admin Panel (accessible from the Dashboard) lets you modify runtime settings:</p>
+
+        <div class="config-grid">
+            <div class="config-card">
+                <div class="label">LLM Provider</div>
+                <div class="value">mock | openai | azure</div>
+                <p style="font-size:0.82rem; color:var(--text-muted); margin-top:0.25rem">Switch between AI providers</p>
+            </div>
+            <div class="config-card">
+                <div class="label">Max Retries</div>
+                <div class="value">2 - 5</div>
+                <p style="font-size:0.82rem; color:var(--text-muted); margin-top:0.25rem">How many times a step retries on gate failure</p>
+            </div>
+            <div class="config-card">
+                <div class="label">Retry Delay</div>
+                <div class="value">1000 ms</div>
+                <p style="font-size:0.82rem; color:var(--text-muted); margin-top:0.25rem">Wait time between retry attempts</p>
+            </div>
+            <div class="config-card">
+                <div class="label">Gate Strict Mode</div>
+                <div class="value">true | false</div>
+                <p style="font-size:0.82rem; color:var(--text-muted); margin-top:0.25rem">When false, warnings won't block the pipeline</p>
+            </div>
+            <div class="config-card">
+                <div class="label">Log Level</div>
+                <div class="value">debug | info | warn | error</div>
+                <p style="font-size:0.82rem; color:var(--text-muted); margin-top:0.25rem">Control verbosity of server logs</p>
+            </div>
+            <div class="config-card">
+                <div class="label">Database</div>
+                <div class="value">sqlite | postgres | in-memory</div>
+                <p style="font-size:0.82rem; color:var(--text-muted); margin-top:0.25rem">Where execution history is stored</p>
+            </div>
+        </div>
+
+        <h3>How to Change Configuration</h3>
+        <p>Use the Admin Panel UI or call the API directly:</p>
+<pre><code>PUT http://localhost:4000/api/admin/config
+Content-Type: application/json
+
+{
+  "key": "MAX_RETRIES",
+  "value": "5"
+}</code></pre>
+    </section>
+
+    <!-- Role of LLM -->
+    <section>
+        <h2>Role of the LLM (AI Model)</h2>
+        <p>The LLM is the <strong>brain behind each agent</strong>. Here's what it does at each step:</p>
+
+        <table>
+            <thead>
+                <tr><th>Agent</th><th>LLM Receives</th><th>LLM Produces</th><th>Temperature</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Product Manager</td>
+                    <td>Feature name + constraints</td>
+                    <td>User stories, requirements, scope</td>
+                    <td>0.7 (creative)</td>
+                </tr>
+                <tr>
+                    <td>Architect</td>
+                    <td>PM's stories + requirements</td>
+                    <td>API design, DB schema, decisions</td>
+                    <td>0.4 (balanced)</td>
+                </tr>
+                <tr>
+                    <td>Developer</td>
+                    <td>Architecture + data model</td>
+                    <td>Actual TypeScript code files + migrations</td>
+                    <td>0.3 (precise)</td>
+                </tr>
+                <tr>
+                    <td>QA</td>
+                    <td>All previous outputs + criteria</td>
+                    <td>Test cases + pass/fail results</td>
+                    <td>0.2 (deterministic)</td>
+                </tr>
+                <tr>
+                    <td>Reviewer</td>
+                    <td>All code files</td>
+                    <td>Approved/rejected + findings</td>
+                    <td>0.2 (deterministic)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="info-box note">
+            <strong>LLM Provider Chain (Fallback Order)</strong>
+            <p>The system tries providers in order: <span class="badge badge-azure">Azure OpenAI</span> →
+            <span class="badge badge-openai">OpenAI</span> →
+            <span class="badge badge-mock">Mock (simulated)</span>.
+            If Azure isn't configured, it falls through to the next available provider.</p>
+        </div>
+
+        <p><strong>Important:</strong> The LLM always returns <em>structured JSON</em>. The framework never executes any code from the LLM &mdash; it only stores and passes the structured output between agents.</p>
+    </section>
+
+    <!-- API Reference -->
+    <section>
+        <h2>API Endpoints Reference</h2>
+        <table>
+            <thead>
+                <tr><th>Method</th><th>Endpoint</th><th>Purpose</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>GET</code></td><td><code>/api/health</code></td><td>Health check</td></tr>
+                <tr><td><code>GET</code></td><td><code>/api/workflows</code></td><td>List available workflow definitions</td></tr>
+                <tr><td><code>GET</code></td><td><code>/api/agents</code></td><td>List registered agent contracts</td></tr>
+                <tr><td><code>GET</code></td><td><code>/api/gates</code></td><td>List quality gate definitions</td></tr>
+                <tr><td><code>POST</code></td><td><code>/api/execute</code></td><td>Execute a workflow</td></tr>
+                <tr><td><code>GET</code></td><td><code>/api/executions</code></td><td>List past execution history</td></tr>
+                <tr><td><code>GET</code></td><td><code>/api/events</code></td><td>Real-time SSE event stream</td></tr>
+                <tr><td><code>GET</code></td><td><code>/api/admin/stats</code></td><td>System statistics</td></tr>
+                <tr><td><code>GET</code></td><td><code>/api/admin/config</code></td><td>Current configuration</td></tr>
+                <tr><td><code>PUT</code></td><td><code>/api/admin/config</code></td><td>Update configuration</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- Real-time Events -->
+    <section>
+        <h2>Real-Time Event Stream</h2>
+        <p>Connect to <code>GET /api/events</code> (Server-Sent Events) to see live progress. The dashboard uses this to show the pipeline executing in real-time.</p>
+
+        <h3>Events You'll See</h3>
+        <table>
+            <thead>
+                <tr><th>Event</th><th>When</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>workflow:started</code></td><td>Workflow begins executing</td></tr>
+                <tr><td><code>step:started</code></td><td>An agent starts working</td></tr>
+                <tr><td><code>step:completed</code></td><td>Agent finishes and gate passes</td></tr>
+                <tr><td><code>step:retrying</code></td><td>Gate failed, retrying the step</td></tr>
+                <tr><td><code>gate:failed</code></td><td>Quality gate validation failed</td></tr>
+                <tr><td><code>workflow:completed</code></td><td>All steps passed successfully</td></tr>
+                <tr><td><code>workflow:failed</code></td><td>Workflow stopped due to errors</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- Summary Diagram -->
+    <section>
+        <h2>Visual Summary</h2>
+        <div style="text-align:center; padding: 2rem 0;">
+            <pre style="display:inline-block; text-align:left; font-size:0.82rem; line-height:1.8;">
+┌─────────────────────────────────────────────────────────────────┐
+│                      POST /api/execute                          │
+│                   { workflow: "feature" }                        │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+                           ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  ORCHESTRATOR (processes steps sequentially)                      │
+│                                                                  │
+│  ┌────────────┐    ┌────────────┐    ┌────────────┐             │
+│  │ Load       │───▶│ Check      │───▶│ Build      │             │
+│  │ Workflow   │    │ Dependencies│    │ Prompt     │             │
+│  └────────────┘    └────────────┘    └─────┬──────┘             │
+│                                            │                     │
+│                                            ▼                     │
+│                                   ┌────────────────┐             │
+│                                   │   LLM CALL     │             │
+│                                   │ (Azure/OpenAI/ │             │
+│                                   │    Mock)       │             │
+│                                   └───────┬────────┘             │
+│                                           │                      │
+│                                           ▼                      │
+│                                   ┌────────────────┐             │
+│                              ┌────│  GATE CHECK    │────┐        │
+│                              │    └────────────────┘    │        │
+│                              │                          │        │
+│                           PASS ✓                     FAIL ✗      │
+│                              │                          │        │
+│                              ▼                          ▼        │
+│                     ┌──────────────┐          ┌──────────────┐   │
+│                     │Store artifact│          │ Retry?       │   │
+│                     │Next step →   │          │ Yes → re-LLM │   │
+│                     └──────────────┘          │ No  → FAIL   │   │
+│                                               └──────────────┘   │
+└──────────────────────────────────────────────────────────────────┘
+            </pre>
+        </div>
+    </section>
+
+</div>
+
+<footer>
+    <p>Nebula Agent Framework v1.0.0 &mdash; User Guide &mdash; Generated June 2026</p>
+</footer>
+
+</body>
+</html>

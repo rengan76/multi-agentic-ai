@@ -80,10 +80,60 @@ app.get('/api/gates', (_req: Request, res: Response) => {
   res.json({ gates: GATE_DEFINITIONS });
 });
 
+// ── JIRA Integration (Mock) ──────────────────────────────
+
+const MOCK_JIRA_STORIES = [
+  {
+    id: 'PROJ-1001', title: 'User Authentication with Email/Password', description: 'Allow users to register and login with email and password credentials',
+    acceptanceCriteria: ['User can register with email and password', 'User can login with valid credentials', 'Invalid credentials show error message', 'Session expires after 30 minutes', 'Password must be at least 8 characters'],
+    constraints: ['Must use bcrypt for password hashing', 'JWT tokens for session management'], priority: 'high', storyPoints: 8, status: 'ready', sprint: 'Sprint 24',
+  },
+  {
+    id: 'PROJ-1002', title: 'Policy CRUD Operations', description: 'Create, read, update, and delete insurance policies',
+    acceptanceCriteria: ['User can create a new policy', 'User can view policy details', 'User can update policy terms', 'User can cancel a policy', 'Audit log tracks all changes'],
+    constraints: ['Must validate against regulatory rules', 'PostgreSQL storage only'], priority: 'high', storyPoints: 13, status: 'ready', sprint: 'Sprint 24',
+  },
+  {
+    id: 'PROJ-1003', title: 'Claims Submission Workflow', description: 'Allow policyholders to submit claims with supporting documents',
+    acceptanceCriteria: ['User can submit a new claim', 'User can upload documents', 'System validates claim against policy', 'Email notification on submission', 'Status tracking for the claim'],
+    constraints: ['Max file size 10MB', 'Supported formats: PDF, JPG, PNG'], priority: 'medium', storyPoints: 8, status: 'ready', sprint: 'Sprint 24',
+  },
+  {
+    id: 'PROJ-1004', title: 'Payment Processing Integration', description: 'Integrate with payment gateway for premium collection',
+    acceptanceCriteria: ['User can pay premium online', 'System retries failed payments', 'Receipt generated after payment', 'Webhook handles payment confirmations'],
+    constraints: ['Must use Stripe API', 'PCI compliance required', 'No card data stored locally'], priority: 'high', storyPoints: 13, status: 'in-progress', sprint: 'Sprint 24',
+  },
+  {
+    id: 'PROJ-1005', title: 'User Profile Management', description: 'Allow users to view and update their profile information',
+    acceptanceCriteria: ['User can view profile details', 'User can update name and email', 'User can change password', 'Email verification on email change'],
+    constraints: ['Must work with existing auth system'], priority: 'low', storyPoints: 5, status: 'ready', sprint: 'Sprint 25',
+  },
+  {
+    id: 'PROJ-1006', title: 'Role-Based Access Control', description: 'Implement RBAC for admin, agent, and customer roles',
+    acceptanceCriteria: ['Admin can manage all resources', 'Agent can manage policies and claims', 'Customer can only view own data', 'Unauthorized access returns 403'],
+    constraints: ['Must integrate with JWT claims', 'Use middleware pattern'], priority: 'medium', storyPoints: 8, status: 'ready', sprint: 'Sprint 25',
+  },
+];
+
+app.get('/api/jira/search', (req: Request, res: Response) => {
+  const query = ((req.query.query as string) || '').toLowerCase().trim();
+  if (!query) {
+    res.json({ stories: MOCK_JIRA_STORIES });
+    return;
+  }
+
+  const filtered = MOCK_JIRA_STORIES.filter(s =>
+    s.id.toLowerCase().includes(query) ||
+    s.title.toLowerCase().includes(query) ||
+    s.description.toLowerCase().includes(query)
+  );
+  res.json({ stories: filtered });
+});
+
 // ── Execute Workflow ──────────────────────────────────────
 
 app.post('/api/execute', async (req: Request, res: Response) => {
-  const { workflow: workflowId, featureName } = req.body;
+  const { workflow: workflowId, featureName, context: inputContext } = req.body;
 
   if (!workflowId || !featureName) {
     res.status(400).json({ error: 'workflow and featureName are required' });
@@ -99,7 +149,7 @@ app.post('/api/execute', async (req: Request, res: Response) => {
   logger.info({ workflowId, featureName }, 'Starting workflow execution');
 
   try {
-    const execution = await orchestrator.execute(workflow, { featureName });
+    const execution = await orchestrator.execute(workflow, { featureName, context: inputContext });
     res.json({
       executionId: execution.id,
       status: execution.status,

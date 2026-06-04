@@ -186,6 +186,24 @@ export class WorkflowOrchestrator {
     parts.push(`Feature: ${context.featureName}`);
     parts.push('');
 
+    // Include structured input context (from JIRA or manual entry)
+    const inputContext = (execution.input as Record<string, unknown>)?.context as Record<string, unknown> | undefined;
+    if (inputContext) {
+      if (inputContext.storyId) parts.push(`Story ID: ${inputContext.storyId}`);
+      if (inputContext.description) parts.push(`Description: ${inputContext.description}`);
+      if (inputContext.acceptanceCriteria && Array.isArray(inputContext.acceptanceCriteria) && (inputContext.acceptanceCriteria as string[]).length > 0) {
+        parts.push('');
+        parts.push('ACCEPTANCE CRITERIA (from story):');
+        (inputContext.acceptanceCriteria as string[]).forEach((ac, i) => parts.push(`  ${i + 1}. ${ac}`));
+      }
+      if (inputContext.constraints && Array.isArray(inputContext.constraints) && (inputContext.constraints as string[]).length > 0) {
+        parts.push('');
+        parts.push('CONSTRAINTS:');
+        (inputContext.constraints as string[]).forEach(c => parts.push(`  - ${c}`));
+      }
+      parts.push('');
+    }
+
     // Include relevant context from previous agents
     if (agent === AgentRole.ARCHITECT && context.artifacts[AgentRole.PRODUCT_MANAGER]) {
       parts.push('REQUIREMENTS FROM PRODUCT MANAGER:');
