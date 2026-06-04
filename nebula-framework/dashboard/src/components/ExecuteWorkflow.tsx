@@ -668,6 +668,15 @@ Policy CRUD,Manage policies,Create policy;View details;Delete policy,PostgreSQL 
             <span className={`status ${result.status}`}>{result.status}</span>
           </div>
 
+          {/* Framework Source Indicator */}
+          <div style={{ padding: '8px 12px', marginBottom: 12, background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 14 }}>⚡</span>
+            <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>Powered by nebula-agents framework</span>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: "'JetBrains Mono', monospace" }}>
+              — System prompts loaded from nebula-agents/agents/*/SKILL.md at runtime
+            </span>
+          </div>
+
           {/* Metrics */}
           <div className="metrics">
             <div className="metric">
@@ -705,6 +714,9 @@ Policy CRUD,Manage policies,Create policy;View details;Delete policy,PostgreSQL 
                         <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
                           Step {i + 1} • {step.duration ? `${(step.duration / 1000).toFixed(1)}s` : ''} • {step.llmCalls} LLM call{step.llmCalls !== 1 ? 's' : ''}
                         </span>
+                        <div style={{ fontSize: 10, color: 'var(--accent)', marginTop: 2, fontFamily: "'JetBrains Mono', monospace" }}>
+                          📂 nebula-agents/agents/{step.agent}/SKILL.md
+                        </div>
                       </div>
                     </div>
                     <span style={{ fontSize: 12, color: step.gateResult?.passed ? 'var(--accent-green)' : 'var(--accent-red)', fontWeight: 600 }}>
