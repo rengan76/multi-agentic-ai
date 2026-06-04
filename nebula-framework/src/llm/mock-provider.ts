@@ -424,8 +424,8 @@ export class MockLLMProvider implements LLMProvider {
     // Simulate network latency
     await new Promise(resolve => setTimeout(resolve, this.latencyMs));
 
-    // Determine which agent is calling based on system prompt
-    const role = this.detectRole(request.systemPrompt);
+    // Determine which agent is calling — prefer explicit roleHint
+    const role = request.roleHint || this.detectRole(request.systemPrompt);
     const generator = MOCK_RESPONSES[role] || MOCK_RESPONSES['product-manager'];
     const content = generator(request.userPrompt);
 

@@ -131,6 +131,7 @@ export class WorkflowOrchestrator {
           temperature: contract?.temperature ?? 0.7,
           maxTokens: 4000,
           responseFormat: 'json',
+          roleHint: step.agent,
         });
 
         // Record LLM call

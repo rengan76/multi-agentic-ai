@@ -160,6 +160,7 @@ export interface LLMRequest {
   temperature: number;
   maxTokens: number;
   responseFormat?: 'json' | 'text';
+  roleHint?: string;  // Explicit role for mock provider routing
 }
 
 export interface LLMResponse {
