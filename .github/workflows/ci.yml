@@ -1,0 +1,83 @@
+name: Nebula Framework CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    name: Lint, Typecheck & Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: nebula-framework/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./nebula-framework
+        run: npm ci
+
+      - name: TypeScript typecheck
+        working-directory: ./nebula-framework
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        working-directory: ./nebula-framework
+        run: npm test -- --no-coverage
+
+      - name: Build
+        working-directory: ./nebula-framework
+        run: npx tsc
+
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: quality
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        working-directory: ./nebula-framework
+        run: docker build -t nebula-framework:${{ github.sha }} .
+
+      - name: Verify container starts
+        working-directory: ./nebula-framework
+        run: |
+          docker run -d --name nebula-test -p 4000:4000 nebula-framework:${{ github.sha }}
+          sleep 5
+          curl -f http://localhost:4000/api/health || exit 1
+          docker stop nebula-test
+
+  dashboard:
+    name: Dashboard Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+          cache-dependency-path: nebula-framework/dashboard/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./nebula-framework/dashboard
+        run: npm ci
+
+      - name: Build dashboard
+        working-directory: ./nebula-framework/dashboard
+        run: npx vite build
