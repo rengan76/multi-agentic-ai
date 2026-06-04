@@ -8,6 +8,7 @@ import { gateEngine } from '../gates/gate-engine';
 import { llmService } from '../llm';
 import { eventBus } from '../events/event-bus';
 import { logger } from '../utils/logger';
+import { loadAllAgents } from '../integrations/nebula-loader';
 
 // ============================================================
 // Workflow Orchestrator
@@ -17,6 +18,39 @@ import { logger } from '../utils/logger';
 
 export class WorkflowOrchestrator {
   private executions: Map<string, WorkflowExecution> = new Map();
+  private nebulaPromptCache: Map<string, string> | null = null;
+
+  // Resolve system prompt: prefer nebula-agents SKILL.md, fall back to built-in
+  private getSystemPrompt(agentRole: AgentRole): string {
+    // Lazy-load nebula agent prompts
+    if (!this.nebulaPromptCache) {
+      this.nebulaPromptCache = new Map();
+      try {
+        const nebulaAgents = loadAllAgents();
+        for (const agent of nebulaAgents) {
+          // Use the full SKILL.md content (minus frontmatter) as system prompt
+          const content = agent.rawContent.replace(/^---[\s\S]*?---\n*/, '').trim();
+          this.nebulaPromptCache.set(agent.role, content);
+        }
+        if (nebulaAgents.length > 0) {
+          logger.info({ count: nebulaAgents.length }, 'Loaded nebula-agents SKILL.md as system prompts');
+        }
+      } catch (err) {
+        logger.warn('Failed to load nebula-agents, using built-in prompts');
+      }
+    }
+
+    // Try nebula-agents first
+    const nebulaPrompt = this.nebulaPromptCache.get(agentRole);
+    if (nebulaPrompt) return nebulaPrompt;
+
+    // Fall back to built-in contract
+    const contract = AGENT_CONTRACTS[agentRole];
+    if (contract) return contract.systemPrompt;
+
+    // Last resort: generic prompt
+    return `You are a ${agentRole} agent. Produce structured JSON output for your role.`;
+  }
 
   async execute(workflow: WorkflowDefinition, input: Record<string, unknown>): Promise<WorkflowExecution> {
     const execution = this.createExecution(workflow, input);
@@ -71,6 +105,9 @@ export class WorkflowOrchestrator {
     const contract = AGENT_CONTRACTS[step.agent];
     const maxRetries = step.config.retries;
 
+    // Resolve system prompt from nebula-agents or fall back to built-in
+    const systemPrompt = this.getSystemPrompt(step.agent);
+
     this.updateStepStatus(execution, stepId, StepStatus.IN_PROGRESS);
     eventBus.emit('step:started', { executionId: execution.id, stepId, agent: step.agent });
     stepExec.startedAt = new Date();
@@ -84,14 +121,14 @@ export class WorkflowOrchestrator {
         // Build prompt with context from previous steps
         const prompt = this.buildPrompt(execution, step.agent, contract);
 
-        // Call LLM
+        // Call LLM (using nebula-agents system prompt when available)
         eventBus.emit('llm:request', { executionId: execution.id, agent: step.agent, model: 'configured' });
         const startTime = Date.now();
 
         const response = await llmService.complete({
-          systemPrompt: contract.systemPrompt,
+          systemPrompt: systemPrompt,
           userPrompt: prompt,
-          temperature: contract.temperature,
+          temperature: contract?.temperature ?? 0.7,
           maxTokens: 4000,
           responseFormat: 'json',
         });

@@ -13,6 +13,9 @@ export enum AgentRole {
   CODE_REVIEWER = 'code-reviewer',
   SECURITY = 'security',
   DEVOPS = 'devops',
+  AI_ENGINEER = 'ai-engineer',
+  TECHNICAL_WRITER = 'technical-writer',
+  BLOGGER = 'blogger',
 }
 
 export enum WorkflowStatus {

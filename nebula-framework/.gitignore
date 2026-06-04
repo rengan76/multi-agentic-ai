@@ -42,3 +42,5 @@ tmp/
 temp/
 data/
 *.db
+nebula-agents/
+nebula-insurance-crm/

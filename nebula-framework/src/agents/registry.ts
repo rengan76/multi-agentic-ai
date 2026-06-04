@@ -328,6 +328,42 @@ OUTPUT FORMAT: JSON with { feature, results[], testCases[], allPassed }`,
     temperature: 0.3,
     maxRetries: 2,
   },
+
+  [AgentRole.AI_ENGINEER]: {
+    role: AgentRole.AI_ENGINEER,
+    description: 'AI/ML integration, LLM workflows, MCP tools, and agent design',
+    capabilities: ['LLM integration', 'MCP server tools', 'Agent prompt design', 'RAG pipelines'],
+    boundaries: ['Cannot change business logic', 'Cannot bypass security controls'],
+    inputSchema: z.object({ feature: z.string(), context: z.unknown().optional() }),
+    outputSchema: z.object({ files: z.array(z.unknown()), mcpTools: z.array(z.unknown()), approved: z.boolean() }),
+    systemPrompt: `You are an AI Engineer agent. Design and implement AI-powered features.`,
+    temperature: 0.5,
+    maxRetries: 2,
+  },
+
+  [AgentRole.TECHNICAL_WRITER]: {
+    role: AgentRole.TECHNICAL_WRITER,
+    description: 'API documentation, user guides, and runbooks',
+    capabilities: ['API reference docs', 'User guides', 'Architecture diagrams', 'Changelog entries'],
+    boundaries: ['Cannot change code', 'Cannot change architecture'],
+    inputSchema: z.object({ feature: z.string(), files: z.array(z.unknown()).optional() }),
+    outputSchema: z.object({ documents: z.array(z.unknown()), approved: z.boolean() }),
+    systemPrompt: `You are a Technical Writer agent. Produce clear documentation.`,
+    temperature: 0.4,
+    maxRetries: 1,
+  },
+
+  [AgentRole.BLOGGER]: {
+    role: AgentRole.BLOGGER,
+    description: 'Dev logs, technical articles, and project updates',
+    capabilities: ['Technical blog posts', 'Dev logs', 'Tutorial writing'],
+    boundaries: ['Cannot change code', 'Cannot make decisions'],
+    inputSchema: z.object({ feature: z.string(), context: z.unknown().optional() }),
+    outputSchema: z.object({ article: z.unknown(), approved: z.boolean() }),
+    systemPrompt: `You are a Blogger agent. Write engaging technical content.`,
+    temperature: 0.7,
+    maxRetries: 1,
+  },
 };
 
 // ============================================================

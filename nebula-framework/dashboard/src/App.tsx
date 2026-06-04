@@ -4,6 +4,7 @@ import { ExecuteWorkflow } from './components/ExecuteWorkflow'
 import { EventStream } from './components/EventStream'
 import { AdminPanel } from './components/AdminPanel'
 import { TaskBoard } from './components/TaskBoard'
+import { SkillsShowcase } from './components/SkillsShowcase'
 
 interface HealthData {
   status: string
@@ -13,7 +14,7 @@ interface HealthData {
   uptime: number
 }
 
-type Tab = 'execute' | 'tasks' | 'agents' | 'history' | 'admin'
+type Tab = 'execute' | 'tasks' | 'agents' | 'history' | 'admin' | 'skills'
 
 export default function App() {
   const [health, setHealth] = useState<HealthData | null>(null)
@@ -85,6 +86,9 @@ export default function App() {
         <button className={`tab ${activeTab === 'admin' ? 'active' : ''}`} onClick={() => setActiveTab('admin')}>
           Admin
         </button>
+        <button className={`tab ${activeTab === 'skills' ? 'active' : ''}`} onClick={() => setActiveTab('skills')} style={{ background: activeTab === 'skills' ? 'linear-gradient(135deg, #3b82f6, #8b5cf6)' : undefined, color: activeTab === 'skills' ? 'white' : undefined }}>
+          🧠 My Skills
+        </button>
       </div>
 
       {activeTab === 'execute' && <ExecuteWorkflow />}
@@ -92,6 +96,7 @@ export default function App() {
       {activeTab === 'agents' && <AgentContracts />}
       {activeTab === 'history' && <EventStream />}
       {activeTab === 'admin' && <AdminPanel />}
+      {activeTab === 'skills' && <SkillsShowcase />}
     </div>
   )
 }

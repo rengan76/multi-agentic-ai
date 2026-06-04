@@ -2,3 +2,5 @@ node_modules/
 dist/
 .env
 *.log
+nebula-agents/
+nebula-insurance-crm/

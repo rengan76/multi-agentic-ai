@@ -9,6 +9,7 @@ import { logger } from '../utils/logger';
 import { WorkflowStatus } from '../types';
 import { IRepository, createRepository, executionToRecord, TaskRecord, TaskStatus } from '../db';
 import { createTaskProviders, TaskProvider } from '../db/task-providers';
+import { loadAllAgents, loadAllActions, loadCrmBlueprint, getIntegrationStatus } from '../integrations/nebula-loader';
 
 // ============================================================
 // REST API - Exposes workflow engine via HTTP
@@ -43,6 +44,48 @@ app.get('/api/health', (_req: Request, res: Response) => {
 
 // ── Workflow Definitions ───────────────────────────────────
 
+// Helper: convert nebula action to executable workflow definition
+function nebulaActionToWorkflow(action: { id: string; name: string; description: string; agents: string[] }): any {
+  const roleMap: Record<string, string> = {
+    'product-manager': 'product-manager',
+    'architect': 'architect',
+    'backend-developer': 'backend-developer',
+    'frontend-developer': 'frontend-developer',
+    'ai-engineer': 'ai-engineer',
+    'quality-engineer': 'qa-engineer',
+    'devops': 'devops',
+    'code-reviewer': 'code-reviewer',
+    'security': 'security',
+    'technical-writer': 'technical-writer',
+    'blogger': 'blogger',
+  };
+
+  const gateMap: Record<string, string> = {
+    'product-manager': 'requirements-complete',
+    'architect': 'design-approved',
+    'backend-developer': 'code-complete',
+    'frontend-developer': 'code-complete',
+    'quality-engineer': 'tests-pass',
+    'code-reviewer': 'review-approved',
+  };
+
+  return {
+    id: `nebula-${action.id}`,
+    name: action.name,
+    description: action.description || `Nebula action: ${action.id}`,
+    version: '1.0.0',
+    steps: action.agents.map((agent, i) => ({
+      id: `step-${i + 1}-${agent}`,
+      order: i + 1,
+      agent: roleMap[agent] || agent,
+      gate: gateMap[agent] || 'review-approved',
+      dependsOn: i > 0 ? [`step-${i}-${action.agents[i - 1]}`] : [],
+      config: { timeout: 30000, retries: 2, retryDelay: 1000, allowPartialOutput: false },
+    })),
+    gates: { ...GATE_DEFINITIONS },
+  };
+}
+
 app.get('/api/workflows', (_req: Request, res: Response) => {
   const builtIn = Object.entries(WORKFLOWS).map(([id, w]) => ({
     id,
@@ -62,16 +105,45 @@ app.get('/api/workflows', (_req: Request, res: Response) => {
     agents: w.steps.map((s: any) => s.agent),
     source: 'custom',
   }));
-  res.json({ workflows: [...builtIn, ...custom] });
+
+  // Add nebula actions as workflows
+  const nebulaActions = loadAllActions();
+  const nebula = nebulaActions.map(a => {
+    const wf = nebulaActionToWorkflow(a);
+    return {
+      id: wf.id,
+      name: `⚡ ${a.name}`,
+      description: wf.description,
+      version: wf.version,
+      stepCount: wf.steps.length,
+      agents: wf.steps.map((s: any) => s.agent),
+      source: 'nebula',
+    };
+  });
+
+  res.json({ workflows: [...builtIn, ...custom, ...nebula] });
 });
 
 app.get('/api/workflows/:id', (req: Request, res: Response) => {
+  // Check built-in first
   const workflow = WORKFLOWS[req.params.id];
-  if (!workflow) {
-    res.status(404).json({ error: `Workflow '${req.params.id}' not found` });
-    return;
+  if (workflow) { res.json(workflow); return; }
+
+  // Check custom
+  if (customWorkflows[req.params.id]) { res.json(customWorkflows[req.params.id]); return; }
+
+  // Check nebula actions (prefixed with 'nebula-')
+  if (req.params.id.startsWith('nebula-')) {
+    const actionId = req.params.id.replace('nebula-', '');
+    const actions = loadAllActions();
+    const action = actions.find(a => a.id === actionId);
+    if (action) {
+      res.json(nebulaActionToWorkflow(action));
+      return;
+    }
   }
-  res.json(workflow);
+
+  res.status(404).json({ error: `Workflow '${req.params.id}' not found` });
 });
 
 // ── Agent Contracts ───────────────────────────────────────
@@ -92,6 +164,64 @@ app.get('/api/agents', (_req: Request, res: Response) => {
 
 app.get('/api/gates', (_req: Request, res: Response) => {
   res.json({ gates: { ...GATE_DEFINITIONS, ...customGates } });
+});
+
+// ── Nebula Integration (reads from cloned repos) ─────────
+
+app.get('/api/nebula/status', (_req: Request, res: Response) => {
+  res.json(getIntegrationStatus());
+});
+
+app.get('/api/nebula/agents', (_req: Request, res: Response) => {
+  const agents = loadAllAgents();
+  res.json({
+    count: agents.length,
+    agents: agents.map(a => ({
+      role: a.role,
+      name: a.name,
+      description: a.description,
+      version: a.version,
+      tags: a.tags,
+      tools: a.tools,
+      identity: a.identity,
+      principles: a.principles,
+      inScope: a.inScope,
+      outOfScope: a.outOfScope,
+    })),
+  });
+});
+
+app.get('/api/nebula/agents/:role', (req: Request, res: Response) => {
+  const agents = loadAllAgents();
+  const agent = agents.find(a => a.role === req.params.role);
+  if (!agent) { res.status(404).json({ error: `Agent role '${req.params.role}' not found` }); return; }
+  res.json(agent);
+});
+
+app.get('/api/nebula/actions', (_req: Request, res: Response) => {
+  const actions = loadAllActions();
+  res.json({
+    count: actions.length,
+    actions: actions.map(a => ({
+      id: a.id,
+      name: a.name,
+      description: a.description,
+      agents: a.agents,
+    })),
+  });
+});
+
+app.get('/api/nebula/crm/blueprint', (_req: Request, res: Response) => {
+  const blueprint = loadCrmBlueprint();
+  if (!blueprint) { res.json({ available: false }); return; }
+  // Return first 5000 chars as summary + section headers
+  const headers = blueprint.match(/^#{1,3}\s+.+$/gm) || [];
+  res.json({
+    available: true,
+    length: blueprint.length,
+    sections: headers.slice(0, 30),
+    preview: blueprint.slice(0, 3000),
+  });
 });
 
 // ── JIRA Integration (Mock) ──────────────────────────────
@@ -225,7 +355,15 @@ app.post('/api/execute', async (req: Request, res: Response) => {
     return;
   }
 
-  const workflow = WORKFLOWS[workflowId];
+  // Resolve workflow: built-in → custom → nebula action
+  let workflow = WORKFLOWS[workflowId] || customWorkflows[workflowId];
+  if (!workflow && workflowId.startsWith('nebula-')) {
+    const actionId = workflowId.replace('nebula-', '');
+    const actions = loadAllActions();
+    const action = actions.find(a => a.id === actionId);
+    if (action) workflow = nebulaActionToWorkflow(action);
+  }
+
   if (!workflow) {
     res.status(400).json({ error: `Unknown workflow: ${workflowId}`, available: Object.keys(WORKFLOWS) });
     return;
