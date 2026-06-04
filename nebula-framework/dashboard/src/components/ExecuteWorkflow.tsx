@@ -112,12 +112,15 @@ export function ExecuteWorkflow() {
   const [expandedStep, setExpandedStep] = useState<string | null>(null)
   const [workflowDetail, setWorkflowDetail] = useState<WorkflowDetail | null>(null)
 
-  // Rich input state
-  const [inputMode, setInputMode] = useState<'jira' | 'manual'>('jira')
+  // Input modes: quick (natural language), jira, csv, manual
+  const [inputMode, setInputMode] = useState<'quick' | 'jira' | 'csv' | 'manual'>('quick')
+  const [quickInput, setQuickInput] = useState('')
   const [jiraId, setJiraId] = useState('')
   const [jiraStories, setJiraStories] = useState<any[]>([])
   const [selectedStory, setSelectedStory] = useState<any>(null)
   const [jiraLoading, setJiraLoading] = useState(false)
+  const [csvTasks, setCsvTasks] = useState<any[]>([])
+  const [csvFileName, setCsvFileName] = useState('')
   const [manualInput, setManualInput] = useState({
     title: '',
     description: '',
@@ -125,6 +128,13 @@ export function ExecuteWorkflow() {
     constraints: [''],
     storyId: '',
   })
+  // Quick input suggestions
+  const [suggestions] = useState([
+    { label: 'User Login', text: 'User authentication - users can login with email/password, invalid creds show error, session expires in 30 min' },
+    { label: 'CRUD Policies', text: 'Policy management - create, read, update, delete insurance policies with audit logging' },
+    { label: 'Claims Submit', text: 'Claims submission - users upload documents, system validates against policy, email notification on submit' },
+    { label: 'Payment', text: 'Payment integration with Stripe - pay premium online, retry failed payments, generate receipts' },
+  ])
 
   useEffect(() => {
     fetch('/api/workflows')
@@ -142,24 +152,74 @@ export function ExecuteWorkflow() {
     }
   }, [selectedWorkflow])
 
-  // Fetch JIRA stories
-  const searchJira = async () => {
-    if (!jiraId.trim()) return
-    setJiraLoading(true)
-    try {
-      const res = await fetch(`/api/jira/search?query=${encodeURIComponent(jiraId.trim())}`)
-      const data = await res.json()
-      if (data.stories) setJiraStories(data.stories)
-    } catch (e) {
-      setJiraStories([])
-    } finally {
-      setJiraLoading(false)
-    }
-  }
+  // Auto-load JIRA stories on mount
+  useEffect(() => {
+    fetch('/api/jira/search?query=')
+      .then(r => r.json())
+      .then(d => { if (d.stories) setJiraStories(d.stories) })
+      .catch(() => {})
+  }, [])
+
+  // JIRA search with debounce
+  useEffect(() => {
+    if (inputMode !== 'jira') return
+    const timer = setTimeout(() => {
+      fetch(`/api/jira/search?query=${encodeURIComponent(jiraId.trim())}`)
+        .then(r => r.json())
+        .then(d => { if (d.stories) setJiraStories(d.stories) })
+        .catch(() => {})
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [jiraId, inputMode])
 
   const selectStory = (story: any) => {
     setSelectedStory(story)
     setFeatureName(story.title)
+  }
+
+  // CSV upload handler
+  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setCsvFileName(file.name)
+    const reader = new FileReader()
+    reader.onload = (evt) => {
+      const text = evt.target?.result as string
+      const lines = text.split('\n').filter(l => l.trim())
+      if (lines.length < 2) return
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+      const tasks = lines.slice(1).map(line => {
+        const values = parseCsvLine(line)
+        const task: any = {}
+        headers.forEach((h, i) => { task[h] = values[i]?.trim() || '' })
+        // Normalize field names
+        task.title = task.title || task.story || task.feature || task.name || ''
+        task.description = task.description || task.desc || ''
+        task.acceptanceCriteria = (task.acceptance_criteria || task.criteria || task.ac || '')
+          .split(';').map((s: string) => s.trim()).filter(Boolean)
+        task.constraints = (task.constraints || task.constraint || '')
+          .split(';').map((s: string) => s.trim()).filter(Boolean)
+        task.id = task.id || task.story_id || task.jira_id || ''
+        task.priority = task.priority || 'medium'
+        return task
+      }).filter(t => t.title)
+      setCsvTasks(tasks)
+    }
+    reader.readAsText(file)
+  }
+
+  // Parse CSV line (handles quoted values with commas)
+  const parseCsvLine = (line: string): string[] => {
+    const result: string[] = []
+    let current = ''
+    let inQuotes = false
+    for (const char of line) {
+      if (char === '"') { inQuotes = !inQuotes }
+      else if (char === ',' && !inQuotes) { result.push(current); current = '' }
+      else { current += char }
+    }
+    result.push(current)
+    return result
   }
 
   // Manual input helpers
@@ -171,6 +231,17 @@ export function ExecuteWorkflow() {
   const removeConstraint = (i: number) => setManualInput(p => ({ ...p, constraints: p.constraints.filter((_, idx) => idx !== i) }))
 
   const getExecutePayload = () => {
+    if (inputMode === 'quick') {
+      return {
+        workflow: selectedWorkflow,
+        featureName: quickInput.split('-')[0]?.trim() || quickInput.slice(0, 50),
+        context: {
+          description: quickInput,
+          acceptanceCriteria: quickInput.split(',').map(s => s.trim()).filter(s => s.length > 5),
+          source: 'quick',
+        }
+      }
+    }
     if (inputMode === 'jira' && selectedStory) {
       return {
         workflow: selectedWorkflow,
@@ -182,6 +253,20 @@ export function ExecuteWorkflow() {
           constraints: selectedStory.constraints || [],
           priority: selectedStory.priority,
           source: 'jira',
+        }
+      }
+    }
+    if (inputMode === 'csv' && csvTasks.length > 0) {
+      const task = csvTasks[0] // Execute first task (batch later)
+      return {
+        workflow: selectedWorkflow,
+        featureName: task.title,
+        context: {
+          storyId: task.id,
+          description: task.description,
+          acceptanceCriteria: task.acceptanceCriteria,
+          constraints: task.constraints,
+          source: 'csv',
         }
       }
     }
@@ -199,7 +284,9 @@ export function ExecuteWorkflow() {
   }
 
   const canExecute = () => {
+    if (inputMode === 'quick') return quickInput.trim().length > 5
     if (inputMode === 'jira') return !!selectedStory
+    if (inputMode === 'csv') return csvTasks.length > 0
     return manualInput.title.trim().length > 0 && manualInput.acceptanceCriteria.some(c => c.trim())
   }
 
@@ -229,202 +316,228 @@ export function ExecuteWorkflow() {
 
   return (
     <div>
-      {/* Workflow Selector */}
-      <div className="execute-panel" style={{ marginBottom: 16 }}>
-        <select value={selectedWorkflow} onChange={e => setSelectedWorkflow(e.target.value)}>
-          {workflows.map(w => (
-            <option key={w.id} value={w.id}>{w.name} ({w.stepCount} steps)</option>
-          ))}
-        </select>
+      {/* Workflow Selector — visual cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8, marginBottom: 16 }}>
+        {workflows.map(w => (
+          <div
+            key={w.id}
+            onClick={() => setSelectedWorkflow(w.id)}
+            style={{
+              padding: '12px 14px', borderRadius: 8, cursor: 'pointer', transition: 'all 0.15s',
+              background: selectedWorkflow === w.id ? 'rgba(59,130,246,0.12)' : 'var(--bg-tertiary)',
+              border: selectedWorkflow === w.id ? '2px solid var(--accent)' : '2px solid var(--border)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <div style={{
+                width: 16, height: 16, borderRadius: '50%', border: selectedWorkflow === w.id ? '5px solid var(--accent)' : '2px solid var(--text-muted)',
+                background: selectedWorkflow === w.id ? 'white' : 'transparent', flexShrink: 0,
+              }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: selectedWorkflow === w.id ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{w.name}</span>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', paddingLeft: 24 }}>
+              {w.stepCount} steps • {w.agents?.map(a => a.split('-')[0]).join(' → ')}
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Input Mode Tabs */}
+      {/* Input Mode Tabs — 4 modes */}
       <div style={{ display: 'flex', gap: 0, marginBottom: 16 }}>
-        <button
-          onClick={() => setInputMode('jira')}
-          style={{
-            padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-            border: '1px solid var(--border)', borderRadius: '6px 0 0 6px',
-            background: inputMode === 'jira' ? 'var(--accent)' : 'var(--bg-tertiary)',
-            color: inputMode === 'jira' ? 'white' : 'var(--text-secondary)',
-          }}
-        >
-          📋 From JIRA
-        </button>
-        <button
-          onClick={() => setInputMode('manual')}
-          style={{
-            padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-            border: '1px solid var(--border)', borderLeft: 'none', borderRadius: '0 6px 6px 0',
-            background: inputMode === 'manual' ? 'var(--accent)' : 'var(--bg-tertiary)',
-            color: inputMode === 'manual' ? 'white' : 'var(--text-secondary)',
-          }}
-        >
-          ✏️ Manual Entry
-        </button>
+        {[
+          { id: 'quick' as const, icon: '⚡', label: 'Quick Start' },
+          { id: 'jira' as const, icon: '📋', label: 'From JIRA' },
+          { id: 'csv' as const, icon: '📁', label: 'Upload CSV' },
+          { id: 'manual' as const, icon: '✏️', label: 'Detailed' },
+        ].map((mode, i, arr) => (
+          <button
+            key={mode.id}
+            onClick={() => setInputMode(mode.id)}
+            style={{
+              padding: '8px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              border: '1px solid var(--border)',
+              borderLeft: i === 0 ? '1px solid var(--border)' : 'none',
+              borderRadius: i === 0 ? '6px 0 0 6px' : i === arr.length - 1 ? '0 6px 6px 0' : '0',
+              background: inputMode === mode.id ? 'var(--accent)' : 'var(--bg-tertiary)',
+              color: inputMode === mode.id ? 'white' : 'var(--text-secondary)',
+            }}
+          >
+            {mode.icon} {mode.label}
+          </button>
+        ))}
       </div>
 
-      {/* JIRA Mode */}
+      {/* ═══ QUICK START MODE ═══ */}
+      {inputMode === 'quick' && (
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: 20, marginBottom: 16 }}>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 10 }}>
+            Just describe what you want to build in plain English. One line is enough.
+          </div>
+          <textarea
+            placeholder="e.g. User login with email/password, show error on invalid creds, expire session after 30 min..."
+            value={quickInput}
+            onChange={e => setQuickInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && canExecute()) { e.preventDefault(); execute() } }}
+            rows={3}
+            style={{ width: '100%', padding: '12px 14px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 14, resize: 'none', lineHeight: 1.6 }}
+          />
+          {/* Quick suggestions — one click to fill */}
+          <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: '26px' }}>Try:</span>
+            {suggestions.map(s => (
+              <button
+                key={s.label}
+                onClick={() => setQuickInput(s.text)}
+                style={{ padding: '4px 10px', fontSize: 11, background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-secondary)', cursor: 'pointer' }}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ JIRA MODE ═══ */}
       {inputMode === 'jira' && (
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: 20, marginBottom: 16 }}>
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12, fontWeight: 600 }}>
-            Search for a JIRA story/task to execute
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            <input
-              type="text"
-              placeholder="Enter JIRA ID (e.g. PROJ-1234) or search by keyword..."
-              value={jiraId}
-              onChange={e => setJiraId(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && searchJira()}
-              style={{ flex: 1, padding: '10px 14px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 13 }}
-            />
-            <button onClick={searchJira} disabled={jiraLoading || !jiraId.trim()} style={{ padding: '10px 16px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-primary)', cursor: 'pointer', fontSize: 13 }}>
-              {jiraLoading ? '...' : '🔍 Search'}
-            </button>
+          <input
+            type="text"
+            placeholder="🔍 Type to filter stories (by ID, title, or keyword)..."
+            value={jiraId}
+            onChange={e => setJiraId(e.target.value)}
+            style={{ width: '100%', padding: '10px 14px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 13, marginBottom: 12 }}
+          />
+
+          {/* Story list — instant click to select */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto' }}>
+            {jiraStories.map(story => (
+              <div
+                key={story.id}
+                onClick={() => selectStory(story)}
+                style={{
+                  padding: '10px 12px', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
+                  background: selectedStory?.id === story.id ? 'rgba(59,130,246,0.15)' : 'var(--bg-tertiary)',
+                  border: selectedStory?.id === story.id ? '1px solid var(--accent)' : '1px solid transparent',
+                  transition: 'all 0.1s',
+                }}
+              >
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', background: 'rgba(59,130,246,0.1)', padding: '2px 6px', borderRadius: 3, whiteSpace: 'nowrap' }}>{story.id}</span>
+                <span style={{ fontSize: 13, color: 'var(--text-primary)', flex: 1 }}>{story.title}</span>
+                <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 3, background: story.priority === 'high' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)', color: story.priority === 'high' ? 'var(--accent-red)' : 'var(--accent-yellow)' }}>{story.priority}</span>
+                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{story.acceptanceCriteria?.length || 0} AC</span>
+              </div>
+            ))}
           </div>
 
-          {/* JIRA Results */}
-          {jiraStories.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 250, overflowY: 'auto' }}>
-              {jiraStories.map(story => (
-                <div
-                  key={story.id}
-                  onClick={() => selectStory(story)}
-                  style={{
-                    padding: '12px 14px', borderRadius: 8, cursor: 'pointer',
-                    background: selectedStory?.id === story.id ? 'rgba(59,130,246,0.15)' : 'var(--bg-tertiary)',
-                    border: selectedStory?.id === story.id ? '1px solid var(--accent)' : '1px solid var(--border)',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', background: 'rgba(59,130,246,0.1)', padding: '2px 6px', borderRadius: 4 }}>{story.id}</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{story.title}</span>
-                    <span style={{ fontSize: 11, marginLeft: 'auto', padding: '2px 8px', borderRadius: 4, background: story.priority === 'high' ? 'rgba(239,68,68,0.1)' : story.priority === 'medium' ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)', color: story.priority === 'high' ? 'var(--accent-red)' : story.priority === 'medium' ? 'var(--accent-yellow)' : 'var(--accent-green)' }}>{story.priority}</span>
-                  </div>
-                  {story.description && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{story.description}</div>}
-                  {story.acceptanceCriteria?.length > 0 && (
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                      {story.acceptanceCriteria.length} acceptance criteria • {story.storyPoints || '-'} pts
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Selected Story Detail */}
+          {/* Selected story preview — compact */}
           {selectedStory && (
-            <div style={{ marginTop: 12, padding: 14, borderRadius: 8, background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.2)' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', marginBottom: 8 }}>SELECTED: {selectedStory.id}</div>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, color: 'var(--text-primary)' }}>{selectedStory.title}</div>
-              {selectedStory.description && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>{selectedStory.description}</div>}
-              {selectedStory.acceptanceCriteria?.length > 0 && (
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>ACCEPTANCE CRITERIA:</div>
-                  {selectedStory.acceptanceCriteria.map((ac: string, i: number) => (
-                    <div key={i} style={{ fontSize: 12, color: 'var(--text-primary)', padding: '3px 0', paddingLeft: 12, borderLeft: '2px solid var(--accent-green)' }}>✓ {ac}</div>
-                  ))}
-                </div>
-              )}
-              {selectedStory.constraints?.length > 0 && (
-                <div style={{ marginTop: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>CONSTRAINTS:</div>
-                  {selectedStory.constraints.map((c: string, i: number) => (
-                    <div key={i} style={{ fontSize: 12, color: 'var(--accent-yellow)', padding: '2px 0' }}>⚠ {c}</div>
-                  ))}
-                </div>
-              )}
+            <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.2)' }}>
+              <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, marginBottom: 4 }}>{selectedStory.id} — Ready to execute</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{selectedStory.description}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {selectedStory.acceptanceCriteria?.map((ac: string, i: number) => (
+                  <span key={i} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 3, background: 'rgba(16,185,129,0.1)', color: 'var(--accent-green)' }}>✓ {ac}</span>
+                ))}
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Manual Mode */}
+      {/* ═══ CSV UPLOAD MODE ═══ */}
+      {inputMode === 'csv' && (
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: 20, marginBottom: 16 }}>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
+            Upload a CSV file with your tasks. Column headers should include: <code style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: 3 }}>title</code>, <code style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: 3 }}>description</code>, <code style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: 3 }}>acceptance_criteria</code> (semicolon-separated)
+          </div>
+
+          {/* Upload area */}
+          <label style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            padding: '24px', border: '2px dashed var(--border)', borderRadius: 8, cursor: 'pointer',
+            background: 'var(--bg-primary)', transition: 'all 0.2s', marginBottom: 12,
+          }}>
+            <span style={{ fontSize: 24, marginBottom: 6 }}>📁</span>
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+              {csvFileName ? `✓ ${csvFileName} (${csvTasks.length} tasks)` : 'Click to upload CSV or drag & drop'}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Supports .csv files</span>
+            <input type="file" accept=".csv" onChange={handleCsvUpload} style={{ display: 'none' }} />
+          </label>
+
+          {/* Sample CSV format */}
+          {!csvFileName && (
+            <div style={{ padding: 10, background: 'var(--bg-primary)', borderRadius: 6, border: '1px solid var(--border)' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, fontWeight: 600 }}>SAMPLE CSV FORMAT:</div>
+              <pre style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0, overflow: 'auto', lineHeight: 1.6 }}>
+{`title,description,acceptance_criteria,constraints,priority
+User Login,Auth with email/pwd,User can login;Invalid creds show error;Session expires 30min,Must use bcrypt,high
+Policy CRUD,Manage policies,Create policy;View details;Delete policy,PostgreSQL only,medium`}
+              </pre>
+            </div>
+          )}
+
+          {/* CSV parsed results */}
+          {csvTasks.length > 0 && (
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--accent-green)', marginBottom: 8, fontWeight: 600 }}>✓ {csvTasks.length} tasks loaded — will execute sequentially</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflowY: 'auto' }}>
+                {csvTasks.map((task, i) => (
+                  <div key={i} style={{ padding: '8px 12px', background: i === 0 ? 'rgba(59,130,246,0.1)' : 'var(--bg-tertiary)', border: i === 0 ? '1px solid var(--accent)' : '1px solid var(--border)', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: i === 0 ? 'var(--accent)' : 'var(--text-muted)', width: 20 }}>#{i + 1}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1 }}>{task.title}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{task.acceptanceCriteria?.length || 0} AC</span>
+                    {i === 0 && <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 600 }}>NEXT →</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══ DETAILED MANUAL MODE ═══ */}
       {inputMode === 'manual' && (
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: 20, marginBottom: 16 }}>
           <div style={{ display: 'grid', gap: 12 }}>
-            {/* Story ID (optional) */}
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>STORY/TASK ID (optional)</label>
-              <input
-                type="text"
-                placeholder="e.g. PROJ-1234"
-                value={manualInput.storyId}
-                onChange={e => setManualInput(p => ({ ...p, storyId: e.target.value }))}
-                style={{ width: '100%', padding: '8px 12px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 13 }}
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 8 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>STORY ID</label>
+                <input type="text" placeholder="PROJ-1234" value={manualInput.storyId} onChange={e => setManualInput(p => ({ ...p, storyId: e.target.value }))} style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 12 }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>TITLE *</label>
+                <input type="text" placeholder="User authentication with email and password" value={manualInput.title} onChange={e => setManualInput(p => ({ ...p, title: e.target.value }))} style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 12 }} />
+              </div>
             </div>
 
-            {/* Title */}
             <div>
-              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>FEATURE / STORY TITLE *</label>
-              <input
-                type="text"
-                placeholder="e.g. User authentication with email and password"
-                value={manualInput.title}
-                onChange={e => setManualInput(p => ({ ...p, title: e.target.value }))}
-                style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 13 }}
-              />
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>DESCRIPTION</label>
+              <textarea placeholder="Business context or user need..." value={manualInput.description} onChange={e => setManualInput(p => ({ ...p, description: e.target.value }))} rows={2} style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 12, resize: 'vertical' }} />
             </div>
 
-            {/* Description */}
             <div>
-              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>DESCRIPTION</label>
-              <textarea
-                placeholder="Describe the feature, user need, or business context..."
-                value={manualInput.description}
-                onChange={e => setManualInput(p => ({ ...p, description: e.target.value }))}
-                rows={3}
-                style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 13, resize: 'vertical' }}
-              />
-            </div>
-
-            {/* Acceptance Criteria */}
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-                ACCEPTANCE CRITERIA * <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>— what must be true for this to be "done"</span>
-              </label>
-              {manualInput.acceptanceCriteria.map((criteria, i) => (
-                <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-                  <span style={{ color: 'var(--accent-green)', lineHeight: '34px', fontSize: 13 }}>✓</span>
-                  <input
-                    type="text"
-                    placeholder={`e.g. ${['User can login with email/password', 'Invalid credentials show error', 'Session expires after 30 minutes', 'Password must be hashed'][i] || 'Add criteria...'}`}
-                    value={criteria}
-                    onChange={e => updateCriteria(i, e.target.value)}
-                    style={{ flex: 1, padding: '8px 12px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 13 }}
-                  />
-                  {manualInput.acceptanceCriteria.length > 1 && (
-                    <button onClick={() => removeCriteria(i)} style={{ padding: '4px 8px', background: 'none', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', fontSize: 16 }}>×</button>
-                  )}
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>ACCEPTANCE CRITERIA *</label>
+              {manualInput.acceptanceCriteria.map((c, i) => (
+                <div key={i} style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+                  <span style={{ color: 'var(--accent-green)', lineHeight: '30px', fontSize: 12 }}>✓</span>
+                  <input type="text" placeholder={['User can login with email/password', 'Invalid credentials show error', 'Session expires after 30 min'][i] || 'Add criteria...'} value={c} onChange={e => updateCriteria(i, e.target.value)} style={{ flex: 1, padding: '6px 10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-primary)', fontSize: 12 }} />
+                  {manualInput.acceptanceCriteria.length > 1 && <button onClick={() => removeCriteria(i)} style={{ background: 'none', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', fontSize: 14 }}>×</button>}
                 </div>
               ))}
-              <button onClick={addCriteria} style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}>+ Add criteria</button>
+              <button onClick={addCriteria} style={{ fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer' }}>+ Add</button>
             </div>
 
-            {/* Constraints */}
             <div>
-              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-                CONSTRAINTS <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>— limitations, existing systems, tech requirements</span>
-              </label>
-              {manualInput.constraints.map((constraint, i) => (
-                <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-                  <span style={{ color: 'var(--accent-yellow)', lineHeight: '34px', fontSize: 13 }}>⚠</span>
-                  <input
-                    type="text"
-                    placeholder={`e.g. ${['Must use existing auth service', 'PostgreSQL database only', 'No external dependencies'][i] || 'Add constraint...'}`}
-                    value={constraint}
-                    onChange={e => updateConstraint(i, e.target.value)}
-                    style={{ flex: 1, padding: '8px 12px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 13 }}
-                  />
-                  {manualInput.constraints.length > 1 && (
-                    <button onClick={() => removeConstraint(i)} style={{ padding: '4px 8px', background: 'none', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', fontSize: 16 }}>×</button>
-                  )}
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>CONSTRAINTS</label>
+              {manualInput.constraints.map((c, i) => (
+                <div key={i} style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+                  <span style={{ color: 'var(--accent-yellow)', lineHeight: '30px', fontSize: 12 }}>⚠</span>
+                  <input type="text" placeholder={['Must use existing auth service', 'PostgreSQL only'][i] || 'Add constraint...'} value={c} onChange={e => updateConstraint(i, e.target.value)} style={{ flex: 1, padding: '6px 10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-primary)', fontSize: 12 }} />
+                  {manualInput.constraints.length > 1 && <button onClick={() => removeConstraint(i)} style={{ background: 'none', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', fontSize: 14 }}>×</button>}
                 </div>
               ))}
-              <button onClick={addConstraint} style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}>+ Add constraint</button>
+              <button onClick={addConstraint} style={{ fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer' }}>+ Add</button>
             </div>
           </div>
         </div>

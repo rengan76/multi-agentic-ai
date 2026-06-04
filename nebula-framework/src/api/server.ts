@@ -25,6 +25,10 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   next();
 });
 
+// In-memory store for custom workflows and gates (persists for server lifetime)
+const customWorkflows: Record<string, any> = {};
+const customGates: Record<string, any> = {};
+
 // ── Health & Info ──────────────────────────────────────────
 
 app.get('/api/health', (_req: Request, res: Response) => {
@@ -40,15 +44,25 @@ app.get('/api/health', (_req: Request, res: Response) => {
 // ── Workflow Definitions ───────────────────────────────────
 
 app.get('/api/workflows', (_req: Request, res: Response) => {
-  const workflows = Object.entries(WORKFLOWS).map(([id, w]) => ({
+  const builtIn = Object.entries(WORKFLOWS).map(([id, w]) => ({
     id,
     name: w.name,
     description: w.description,
     version: w.version,
     stepCount: w.steps.length,
     agents: w.steps.map(s => s.agent),
+    source: 'builtin',
   }));
-  res.json({ workflows });
+  const custom = Object.entries(customWorkflows).map(([id, w]) => ({
+    id,
+    name: w.name,
+    description: w.description,
+    version: w.version,
+    stepCount: w.steps.length,
+    agents: w.steps.map((s: any) => s.agent),
+    source: 'custom',
+  }));
+  res.json({ workflows: [...builtIn, ...custom] });
 });
 
 app.get('/api/workflows/:id', (req: Request, res: Response) => {
@@ -77,7 +91,7 @@ app.get('/api/agents', (_req: Request, res: Response) => {
 // ── Gate Definitions ──────────────────────────────────────
 
 app.get('/api/gates', (_req: Request, res: Response) => {
-  res.json({ gates: GATE_DEFINITIONS });
+  res.json({ gates: { ...GATE_DEFINITIONS, ...customGates } });
 });
 
 // ── JIRA Integration (Mock) ──────────────────────────────
@@ -577,6 +591,77 @@ app.get('/api/admin/integrations', async (_req: Request, res: Response) => {
     })
   );
   res.json({ integrations });
+});
+
+// ── Workflow & Gate Admin CRUD ────────────────────────────
+
+// Create / update custom workflow
+app.post('/api/admin/workflows', (req: Request, res: Response) => {
+  const { id, name, description, steps } = req.body;
+  if (!id || !name) { res.status(400).json({ error: 'id and name are required' }); return; }
+  if (!steps || !Array.isArray(steps) || steps.length === 0) { res.status(400).json({ error: 'At least one step is required' }); return; }
+  if (WORKFLOWS[id]) { res.status(400).json({ error: `Cannot overwrite built-in workflow '${id}'` }); return; }
+
+  customWorkflows[id] = {
+    id,
+    name,
+    description: description || '',
+    version: '1.0.0',
+    steps: steps.filter((s: any) => s.agent).map((s: any, i: number) => ({
+      id: `step-${i + 1}`,
+      name: `Step ${i + 1}`,
+      agent: s.agent,
+      gate: s.gate || null,
+      dependsOn: i > 0 ? [`step-${i}`] : [],
+    })),
+    createdAt: new Date().toISOString(),
+  };
+
+  logger.info({ id, name, stepCount: steps.length }, 'Custom workflow created');
+  res.json({ success: true, workflow: customWorkflows[id] });
+});
+
+// Delete custom workflow
+app.delete('/api/admin/workflows/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  if (WORKFLOWS[id]) { res.status(400).json({ error: `Cannot delete built-in workflow '${id}'` }); return; }
+  if (!customWorkflows[id]) { res.status(404).json({ error: 'Workflow not found' }); return; }
+  delete customWorkflows[id];
+  logger.info({ id }, 'Custom workflow deleted');
+  res.json({ success: true });
+});
+
+// Create / update custom gate
+app.post('/api/admin/gates', (req: Request, res: Response) => {
+  const { id, name, description, validators } = req.body;
+  if (!id || !name) { res.status(400).json({ error: 'id and name are required' }); return; }
+  if (!validators || !Array.isArray(validators) || validators.length === 0) { res.status(400).json({ error: 'At least one validator is required' }); return; }
+  if (GATE_DEFINITIONS[id]) { res.status(400).json({ error: `Cannot overwrite built-in gate '${id}'` }); return; }
+
+  customGates[id] = {
+    name,
+    description: description || '',
+    validators: validators.filter((v: any) => v.field && v.rule).map((v: any) => ({
+      field: v.field,
+      rule: v.rule,
+      value: v.value || undefined,
+      message: v.message || `${v.field} failed ${v.rule} check`,
+    })),
+    createdAt: new Date().toISOString(),
+  };
+
+  logger.info({ id, name, validatorCount: validators.length }, 'Custom gate created');
+  res.json({ success: true, gate: customGates[id] });
+});
+
+// Delete custom gate
+app.delete('/api/admin/gates/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  if (GATE_DEFINITIONS[id]) { res.status(400).json({ error: `Cannot delete built-in gate '${id}'` }); return; }
+  if (!customGates[id]) { res.status(404).json({ error: 'Gate not found' }); return; }
+  delete customGates[id];
+  logger.info({ id }, 'Custom gate deleted');
+  res.json({ success: true });
 });
 
 // ── Error handler ────────────────────────────────────────
