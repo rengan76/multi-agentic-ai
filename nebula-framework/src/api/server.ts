@@ -64,9 +64,14 @@ function nebulaActionToWorkflow(action: { id: string; name: string; description:
     'product-manager': 'requirements-complete',
     'architect': 'design-approved',
     'backend-developer': 'code-complete',
-    'frontend-developer': 'code-complete',
+    'frontend-developer': 'review-approved',
     'quality-engineer': 'tests-pass',
     'code-reviewer': 'review-approved',
+    'security': 'review-approved',
+    'devops': 'review-approved',
+    'ai-engineer': 'review-approved',
+    'technical-writer': 'review-approved',
+    'blogger': 'review-approved',
   };
 
   return {
@@ -87,15 +92,6 @@ function nebulaActionToWorkflow(action: { id: string; name: string; description:
 }
 
 app.get('/api/workflows', (_req: Request, res: Response) => {
-  const builtIn = Object.entries(WORKFLOWS).map(([id, w]) => ({
-    id,
-    name: w.name,
-    description: w.description,
-    version: w.version,
-    stepCount: w.steps.length,
-    agents: w.steps.map(s => s.agent),
-    source: 'builtin',
-  }));
   const custom = Object.entries(customWorkflows).map(([id, w]) => ({
     id,
     name: w.name,
@@ -106,7 +102,7 @@ app.get('/api/workflows', (_req: Request, res: Response) => {
     source: 'custom',
   }));
 
-  // Add nebula actions as workflows
+  // Only nebula actions as workflows (framework-powered)
   const nebulaActions = loadAllActions();
   const nebula = nebulaActions.map(a => {
     const wf = nebulaActionToWorkflow(a);
@@ -121,7 +117,7 @@ app.get('/api/workflows', (_req: Request, res: Response) => {
     };
   });
 
-  res.json({ workflows: [...builtIn, ...custom, ...nebula] });
+  res.json({ workflows: [...nebula, ...custom] });
 });
 
 app.get('/api/workflows/:id', (req: Request, res: Response) => {
