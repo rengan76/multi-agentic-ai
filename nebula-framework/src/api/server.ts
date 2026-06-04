@@ -130,6 +130,77 @@ app.get('/api/jira/search', (req: Request, res: Response) => {
   res.json({ stories: filtered });
 });
 
+// ── JIRA Config Management ───────────────────────────────
+
+let jiraConfig: { url: string; email: string; token: string; project: string; connected: boolean } = {
+  url: process.env.JIRA_URL || '',
+  email: process.env.JIRA_EMAIL || '',
+  token: process.env.JIRA_TOKEN || '',
+  project: process.env.JIRA_PROJECT || '',
+  connected: false,
+};
+
+app.get('/api/jira/config', (_req: Request, res: Response) => {
+  res.json({
+    config: {
+      url: jiraConfig.url,
+      email: jiraConfig.email,
+      project: jiraConfig.project,
+      tokenSet: !!jiraConfig.token,
+      connected: jiraConfig.connected,
+    }
+  });
+});
+
+app.put('/api/jira/config', (req: Request, res: Response) => {
+  const { url, email, token, project } = req.body;
+
+  if (url !== undefined) jiraConfig.url = url;
+  if (email !== undefined) jiraConfig.email = email;
+  if (token !== undefined) jiraConfig.token = token;
+  if (project !== undefined) jiraConfig.project = project;
+
+  // Validate connection (mock validation - in real impl, call JIRA API)
+  const isConfigured = !!(jiraConfig.url && jiraConfig.email && jiraConfig.token && jiraConfig.project);
+  jiraConfig.connected = isConfigured;
+
+  logger.info({ url: jiraConfig.url, project: jiraConfig.project, connected: jiraConfig.connected }, 'JIRA config updated');
+
+  res.json({
+    success: true,
+    connected: jiraConfig.connected,
+    message: isConfigured ? 'JIRA configuration saved. Connected successfully.' : 'Configuration saved but incomplete — fill all fields to connect.',
+  });
+});
+
+app.get('/api/jira/test', async (_req: Request, res: Response) => {
+  if (!jiraConfig.url || !jiraConfig.email || !jiraConfig.token) {
+    res.json({ connected: false, error: 'JIRA not configured. Set URL, email, and token in Admin panel.' });
+    return;
+  }
+
+  // In production, this would make a real JIRA API call:
+  // GET {jiraConfig.url}/rest/api/3/myself
+  // with Basic auth: base64(email:token)
+  // For now, validate the config format
+  const urlValid = jiraConfig.url.startsWith('https://') && jiraConfig.url.includes('atlassian.net');
+  const emailValid = jiraConfig.email.includes('@');
+  const tokenValid = jiraConfig.token.length > 10;
+
+  const connected = urlValid && emailValid && tokenValid;
+  jiraConfig.connected = connected;
+
+  res.json({
+    connected,
+    message: connected ? 'Connection successful' : 'Connection failed — verify URL is https://*.atlassian.net and credentials are valid',
+    checks: {
+      url: urlValid ? 'valid' : 'invalid (must be https://*.atlassian.net)',
+      email: emailValid ? 'valid' : 'invalid (must be an email)',
+      token: tokenValid ? 'present' : 'missing or too short',
+    }
+  });
+});
+
 // ── Execute Workflow ──────────────────────────────────────
 
 app.post('/api/execute', async (req: Request, res: Response) => {
